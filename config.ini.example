@@ -1,0 +1,12 @@
+[DEFAULT]
+LogFile =
+CookiesFile = 
+BotToken = 
+BotID = 
+Channel = 
+TwitterUser = 
+TwitterEmail = 
+TwitterPass = 
+BskyUser =
+BskyPass =
+StartMessage = 
