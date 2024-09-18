@@ -22,7 +22,7 @@ MastoRegex = r"(https:\/\/[^\.]+\.[^\.\s|\n]+)"
 ## READ CONFIG FILE
 config = configparser.ConfigParser()
 config.read('config.ini')
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO,filename=config['DEFAULT']['LogFile'])
 BOT_TOKEN = config['DEFAULT']['BotToken']
 
 MastoClient = feClient(access_token=config['DEFAULT']['MastoToken'],api_base_url=config['DEFAULT']['MastoInstance'])
@@ -53,7 +53,7 @@ async def on_ready():
 	logging.info('------')
 	do_sync.start()
 
-@loop(minutes=5)
+@loop(minutes=5,reconnect=True)
 async def do_sync():
 	await share_posts()
 	await list_tweets()
@@ -165,6 +165,6 @@ async def main():
 	await login_twitter()
 	await login_bsky()
 	async with bot:
-		await bot.start(BOT_TOKEN)
+		await bot.start(BOT_TOKEN,reconnect=True)
 
 asyncio.run(main())
