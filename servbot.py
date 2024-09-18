@@ -51,11 +51,12 @@ async def on_ready():
 	logging.info(bot.user.name)
 	logging.info(bot.user.id)
 	logging.info('------')
-	#share_posts.start()
+	do_sync.start()
+
+@loop(minutes=5)
+async def do_sync():
 	await share_posts()
 	await list_tweets()
-	await bot.close()
-	exit()
 
 async def list_tweets():
 	op = await TwitterClient.get_user_by_screen_name("956productions")
