@@ -12,10 +12,10 @@ from discord.ext import commands
 from discord.ext.tasks import loop
 
 TwitterClient = twClient('en-US',user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:130.0) Gecko/20100101 Firefox/130.0")
-TwitterRegex = r"(?:x|twitter)\.com\/([^\/]+)\/status\/([^\/?]+)"
+TwitterRegex = r"(?:x|twitter)\.com\/([^\/]+)\/status\/([^\/?\s]+)"
 
 BskyClient = atClient(base_url='https://bsky.social')
-BskyRegex = r"bsky\.app\/profile\/([^\/?]+)\/post\/([^\/?]+)"
+BskyRegex = r"bsky\.app\/profile\/([^\/?]+)\/post\/([^\/?\s]+)"
 
 MastoRegex = r"(https:\/\/[^\.]+\.[^\.\s|\n]+)"
 
