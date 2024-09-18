@@ -4,6 +4,7 @@ import logging
 import discord
 import re
 import os
+import json
 from twikit import Client as twClient
 from atproto import Client as atClient
 from discord.ext import commands
@@ -28,6 +29,12 @@ intents.guild_messages = True
 
 bot = commands.Bot(command_prefix='&', intents=intents, activity = discord.Game("beep beep."))
 
+tweets_cache = []
+
+if os.path.isfile('tweets_cache.json'):
+	with open('tweets_cache.json') as file:
+		tweets_cache = json.load(file)
+
 @bot.event
 async def on_ready():
 	logging.info('Logged in as')
@@ -36,12 +43,23 @@ async def on_ready():
 	logging.info('------')
 	#share_posts.start()
 	await share_posts()
+	await list_tweets()
 	await bot.close()
 	exit()
 
+async def list_tweets():
+	op = await TwitterClient.get_user_by_screen_name("956productions")
+	posts = await TwitterClient.get_user_tweets(op.id,"Tweets")
+	for i in posts:
+		if int(i.id) not in tweets_cache and int(i.id) > int(config['DEFAULT']['StartTweet']) and i.text[:2] != "RT":
+			tweets_cache.append(int(i.id))
+			await bot.get_channel(int(config['DEFAULT']['StaffChannel'])).send("RTs appreciated! https://vxtwitter.com/956productions/status/%s" % i.id)
+	with open("tweets_cache.json","w") as file:
+		json.dump(tweets_cache,file)
+
 #@loop(seconds=10,reconnect=True)
 async def share_posts():
-	messages = [message async for message in bot.get_channel(int(config['DEFAULT']['Channel'])).history(limit=50)]
+	messages = [message async for message in bot.get_channel(int(config['DEFAULT']['StaffChannel'])).history(limit=50)]
 	for m in messages:
 		alreadyShared = False
 		for r in m.reactions:
@@ -54,8 +72,7 @@ async def share_posts():
 			#get Twitter posts and RT
 			await share_twitter_posts(m)
 			#get Bsky posts and RT
-			await share_bsky_posts(m)
-		
+			#await share_bsky_posts(m)
 
 async def share_twitter_posts(message):
 	twLinks = re.findall(TwitterRegex,message.content)
@@ -111,7 +128,7 @@ async def login_bsky():
 
 async def main():
 	await login_twitter()
-	await login_bsky()
+	#await login_bsky()
 	async with bot:
 		await bot.start(BOT_TOKEN)
 
