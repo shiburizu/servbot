@@ -100,7 +100,7 @@ async def share_twitter_posts(message):
 			if message.id > int(config['DEFAULT']['StartMessage']):
 				post = await TwitterClient.get_tweet_by_id(i[1])
 				await post.retweet()
-				asyncio.sleep(5)
+				await asyncio.sleep(5)
 				rt = await post.get_retweeters()
 				#check that we ACTUALLY retweeted before we mark the link off as shared
 				for u in rt:
