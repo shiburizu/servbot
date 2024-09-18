@@ -103,11 +103,14 @@ async def share_twitter_posts(message):
 				await asyncio.sleep(5)
 				rt = await post.get_retweeters()
 				#check that we ACTUALLY retweeted before we mark the link off as shared
+				shared = False
 				for u in rt:
 					if u.name == config['DEFAULT']['TwitterUser']:
-						await message.add_reaction("🔁")
-						logging.info('Reposted Twitter post ID %s' % i[1])
-						message_cache.append(message.id)
+						shared = True
+				if shared == False:
+					await message.add_reaction("🔁")
+					logging.info('Reposted Twitter post ID %s' % i[1])
+					message_cache.append(message.id)
 
 async def share_bsky_posts(message):
 	atLinks = re.findall(BskyRegex,message.content)
