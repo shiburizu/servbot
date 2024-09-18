@@ -139,9 +139,9 @@ async def share_masto_posts(message):
 						pass
 
 async def login_twitter():
-	try:
+	if os.path.isfile(config['DEFAULT']['CookiesFile']):
 		TwitterClient.load_cookies(config['DEFAULT']['CookiesFile'])
-	except:
+	else:
 		await TwitterClient.login(
 			auth_info_1=config['DEFAULT']['TwitterUser'],
 			auth_info_2=config['DEFAULT']['TwitterEmail'],
