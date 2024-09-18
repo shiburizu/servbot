@@ -22,7 +22,7 @@ MastoRegex = r"(https:\/\/[^\.]+\.[^\.\s|\n]+)"
 ## READ CONFIG FILE
 config = configparser.ConfigParser()
 config.read('config.ini')
-logging.basicConfig(level=logging.INFO,filename=config['DEFAULT']['LogFile'])
+logging.basicConfig(level=logging.INFO)
 BOT_TOKEN = config['DEFAULT']['BotToken']
 
 MastoClient = feClient(access_token=config['DEFAULT']['MastoToken'],api_base_url=config['DEFAULT']['MastoInstance'])
@@ -99,13 +99,10 @@ async def share_twitter_posts(message):
 	if len(twLinks) > 0:
 		for i in twLinks:
 			if message.id > int(config['DEFAULT']['StartMessage']):
-				resp = await TwitterClient.retweet(i[1])
-				if resp.status_code == 200:
-					try:
-						await message.add_reaction("🔁")
-					except discord.errors.HTTPException:
-						pass
-					logging.info('Reposted Twitter post ID %s' % i[1])
+				post = await TwitterClient.get_tweet_by_id(i[1])
+				await post.retweet()
+				await message.add_reaction("🔁")
+				logging.info('Reposted Twitter post ID %s' % i[1])
 
 async def share_bsky_posts(message):
 	atLinks = re.findall(BskyRegex,message.content)
