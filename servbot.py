@@ -35,9 +35,15 @@ bot = commands.Bot(command_prefix='&', intents=intents, activity = discord.Game(
 
 tweets_cache = []
 
+message_cache = []
+
 if os.path.isfile('tweets_cache.json'):
 	with open('tweets_cache.json') as file:
 		tweets_cache = json.load(file)
+
+if os.path.isfile('message_cache.json'):
+	with open('message_cache.json') as file:
+		message_cache = json.load(file)
 
 @bot.event
 async def on_ready():
@@ -63,8 +69,9 @@ async def list_tweets():
 
 async def share_posts():
 	messages = [message async for message in bot.get_channel(int(config['DEFAULT']['StaffChannel'])).history(limit=50)]
+
 	for m in messages:
-		if m.author.id != bot.user.id:
+		if m.author.id != bot.user.id and m.id not in message_cache:
 			alreadyShared = False
 			for r in m.reactions:
 				if str(r) == u"🔁":
@@ -73,6 +80,8 @@ async def share_posts():
 						if u.id == int(config['DEFAULT']['BotID']):
 							alreadyShared = True
 			if alreadyShared == False:
+				message_cache.append(m.id)
+				
 				#get Twitter posts and RT
 				await share_twitter_posts(m)
 
@@ -81,6 +90,9 @@ async def share_posts():
 
 				#get masto posts and RT
 				await share_masto_posts(m)
+
+	with open("message_cache.json","w") as file:
+		json.dump(message_cache,file)
 
 async def share_twitter_posts(message):
 	twLinks = re.findall(TwitterRegex,message.content)
