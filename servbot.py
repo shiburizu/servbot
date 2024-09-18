@@ -81,8 +81,6 @@ async def share_posts():
 						if u.id == int(config['DEFAULT']['BotID']):
 							alreadyShared = True
 			if alreadyShared == False:
-				message_cache.append(m.id)
-				
 				#get Twitter posts and RT
 				await share_twitter_posts(m)
 
@@ -102,8 +100,14 @@ async def share_twitter_posts(message):
 			if message.id > int(config['DEFAULT']['StartMessage']):
 				post = await TwitterClient.get_tweet_by_id(i[1])
 				await post.retweet()
-				await message.add_reaction("🔁")
-				logging.info('Reposted Twitter post ID %s' % i[1])
+				asyncio.sleep(5)
+				rt = await post.get_retweeters()
+				#check that we ACTUALLY retweeted before we mark the link off as shared
+				for u in rt:
+					if u.name == config['DEFAULT']['TwitterUser']:
+						await message.add_reaction("🔁")
+						logging.info('Reposted Twitter post ID %s' % i[1])
+						message_cache.append(message.id)
 
 async def share_bsky_posts(message):
 	atLinks = re.findall(BskyRegex,message.content)
@@ -115,6 +119,7 @@ async def share_bsky_posts(message):
 					BskyClient.repost(uri=post.uri,cid=post.cid)
 					logging.info('Reposted Bsky post ID %s' % i[1])
 					await message.add_reaction("🔁")
+					message_cache.append(message.id)
 				except discord.errors.HTTPException:
 					pass
 
@@ -133,6 +138,7 @@ async def share_masto_posts(message):
 					try:
 						await message.add_reaction("🔁")
 						logging.info('Reposted Masto post ID %s' % post['statuses'][0]['id'])
+						message_cache.append(message.id)
 					except discord.errors.HTTPException:
 						pass
 
