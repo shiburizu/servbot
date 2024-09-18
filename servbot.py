@@ -118,6 +118,7 @@ async def share_masto_posts(message):
 				post = MastoClient.search(i,True,result_type="statuses")
 				if len(post['statuses']) != 0:
 					MastoClient.status_reblog(post['statuses'][0]['id'])
+					#follow the account so we can get their info reliably in the future
 					MastoClient.account_follow(post['statuses'][0]['account']['id'])
 					try:
 						await message.add_reaction("🔁")
