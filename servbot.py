@@ -19,8 +19,7 @@ BskyRegex = r"bsky\.app\/profile\/([^\/?]+)\/post\/([^\/?]+)"
 ## READ CONFIG FILE
 config = configparser.ConfigParser()
 config.read('config.ini')
-
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO,filename=config['DEFAULT']['LogFile'])
 BOT_TOKEN = config['DEFAULT']['BotToken']
 
 intents = discord.Intents.default()
@@ -57,22 +56,22 @@ async def list_tweets():
 	with open("tweets_cache.json","w") as file:
 		json.dump(tweets_cache,file)
 
-#@loop(seconds=10,reconnect=True)
 async def share_posts():
 	messages = [message async for message in bot.get_channel(int(config['DEFAULT']['StaffChannel'])).history(limit=50)]
 	for m in messages:
-		alreadyShared = False
-		for r in m.reactions:
-			if str(r) == u"🔁":
-				users = [user async for user in r.users()]
-				for u in users:
-					if u.id == int(config['DEFAULT']['BotID']):
-						alreadyShared = True
-		if alreadyShared == False:
-			#get Twitter posts and RT
-			await share_twitter_posts(m)
-			#get Bsky posts and RT
-			#await share_bsky_posts(m)
+		if m.author.id != bot.user.id:
+			alreadyShared = False
+			for r in m.reactions:
+				if str(r) == u"🔁":
+					users = [user async for user in r.users()]
+					for u in users:
+						if u.id == int(config['DEFAULT']['BotID']):
+							alreadyShared = True
+			if alreadyShared == False:
+				#get Twitter posts and RT
+				await share_twitter_posts(m)
+				#get Bsky posts and RT
+				#await share_bsky_posts(m)
 
 async def share_twitter_posts(message):
 	twLinks = re.findall(TwitterRegex,message.content)
