@@ -7,6 +7,7 @@ import os
 import json
 from twikit import Client as twClient
 from atproto import Client as atClient
+from mastodon import Mastodon as feClient
 from discord.ext import commands
 from discord.ext.tasks import loop
 
@@ -16,11 +17,15 @@ TwitterRegex = r"(?:x|twitter)\.com\/([^\/]+)\/status\/([^\/?]+)"
 BskyClient = atClient(base_url='https://bsky.social')
 BskyRegex = r"bsky\.app\/profile\/([^\/?]+)\/post\/([^\/?]+)"
 
+MastoRegex = r"(https:\/\/[^\.]+\.[^\.\s|\n]+)"
+
 ## READ CONFIG FILE
 config = configparser.ConfigParser()
 config.read('config.ini')
 logging.basicConfig(level=logging.INFO,filename=config['DEFAULT']['LogFile'])
 BOT_TOKEN = config['DEFAULT']['BotToken']
+
+MastoClient = feClient(access_token=config['DEFAULT']['MastoToken'],api_base_url=config['DEFAULT']['MastoInstance'])
 
 intents = discord.Intents.default()
 intents.members = True
@@ -70,8 +75,12 @@ async def share_posts():
 			if alreadyShared == False:
 				#get Twitter posts and RT
 				await share_twitter_posts(m)
+
 				#get Bsky posts and RT
 				#await share_bsky_posts(m)
+
+				#get masto posts and RT
+				await share_masto_posts(m)
 
 async def share_twitter_posts(message):
 	twLinks = re.findall(TwitterRegex,message.content)
@@ -79,7 +88,6 @@ async def share_twitter_posts(message):
 		for i in twLinks:
 			if message.id > int(config['DEFAULT']['StartMessage']):
 				resp = await TwitterClient.retweet(i[1])
-				logging.info(resp)
 				if resp.status_code == 200:
 					try:
 						await message.add_reaction("🔁")
@@ -99,6 +107,23 @@ async def share_bsky_posts(message):
 					await message.add_reaction("🔁")
 				except discord.errors.HTTPException:
 					pass
+
+async def share_masto_posts(message):
+	feLinks = re.findall(MastoRegex,message.content)
+	if len(feLinks) > 0:
+		for i in feLinks:
+			isTweet = re.findall(TwitterRegex,i)
+			isBsky = re.findall(BskyRegex,i)
+			if isTweet == [] and isBsky == []:
+				post = MastoClient.search(i,True,result_type="statuses")
+				if len(post['statuses']) != 0:
+					MastoClient.status_reblog(post['statuses'][0]['id'])
+					MastoClient.account_follow(post['statuses'][0]['account']['id'])
+					try:
+						await message.add_reaction("🔁")
+						logging.info('Reposted Masto post ID %s' % post['statuses'][0]['id'])
+					except discord.errors.HTTPException:
+						pass
 
 async def login_twitter():
 	try:

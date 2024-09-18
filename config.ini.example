@@ -11,3 +11,5 @@ BskyUser =
 BskyPass =
 StartMessage = 
 StartTweet =
+MastoInstance =
+MastoToken =
