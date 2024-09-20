@@ -64,7 +64,9 @@ async def list_tweets():
 	for i in posts:
 		if int(i.id) not in tweets_cache and int(i.id) > int(config['DEFAULT']['StartTweet']) and i.text[:2] != "RT":
 			tweets_cache.append(int(i.id))
-			await bot.get_channel(int(config['DEFAULT']['StaffChannel'])).send("RTs appreciated! https://vxtwitter.com/956productions/status/%s" % i.id)
+			await bot.get_channel(int(config['DEFAULT']['StaffChannel'])).send("RTs appreciated! 🔗 https://vxtwitter.com/956productions/status/%s" % i.id)
+			await bot.get_channel(int(config['DEFAULT']['PublicChannel'])).send(i.text,suppress_embeds=True)
+			await bot.get_channel(int(config['DEFAULT']['PublicChannel'])).send("RTs appreciated! 🔗 https://vxtwitter.com/956productions/status/%s" % i.id)
 	with open("tweets_cache.json","w") as file:
 		json.dump(tweets_cache,file)
 
