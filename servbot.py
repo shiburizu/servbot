@@ -66,7 +66,7 @@ async def list_tweets():
 			tweets_cache.append(int(i.id))
 			await bot.get_channel(int(config['DEFAULT']['StaffChannel'])).send("RTs appreciated! 🔗 https://vxtwitter.com/956productions/status/%s" % i.id)
 			await bot.get_channel(int(config['DEFAULT']['PublicChannel'])).send(i.text,suppress_embeds=True)
-			await bot.get_channel(int(config['DEFAULT']['PublicChannel'])).send("RTs appreciated! 🔗 https://vxtwitter.com/956productions/status/%s" % i.id)
+			await bot.get_channel(int(config['DEFAULT']['PublicChannel'])).send("RTs appreciated! 🔗 https://vxtwitter.com/956productions/status/%s" % i.id,suppress_embeds=False)
 	with open("tweets_cache.json","w") as file:
 		json.dump(tweets_cache,file)
 
