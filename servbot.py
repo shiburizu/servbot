@@ -31,6 +31,7 @@ MastoClient = feClient(access_token=config['DEFAULT']['MastoToken'],api_base_url
 intents = discord.Intents.default()
 intents.members = True
 intents.guild_messages = True
+intents.message_content = True
 
 bot = commands.Bot(command_prefix='vg!', intents=intents, activity = discord.Game("beep beep."))
 
@@ -52,7 +53,7 @@ async def on_ready():
 	logging.info(bot.user.name)
 	logging.info(bot.user.id)
 	logging.info('------')
-	do_sync.start()
+	#do_sync.start()
 
 @loop(minutes=5,reconnect=True)
 async def do_sync():
@@ -61,9 +62,12 @@ async def do_sync():
 
 @bot.command()
 async def runitup(ctx):
-	resp = requests.get(url=config['DEFAULT']['RunItWebhook'])
-	if resp.status_code == 200:
-		await ctx.send("We gon run it up")
+	if ctx.channel.id == int(config['DEFAULT']['TechChannel']):
+		resp = requests.get(url=config['DEFAULT']['RunItWebhook'])
+		if resp.status_code == 200:
+			await ctx.send("We gon run it up")
+		else:
+			await ctx.send("Wrong status code: %s. Double check make?" % resp.status_code)
 
 async def list_tweets():
 	op = await TwitterClient.get_user_by_screen_name("956productions")
