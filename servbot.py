@@ -5,6 +5,7 @@ import discord
 import re
 import os
 import json
+import requests
 from twikit import Client as twClient
 from atproto import Client as atClient
 from mastodon import Mastodon as feClient
@@ -31,7 +32,7 @@ intents = discord.Intents.default()
 intents.members = True
 intents.guild_messages = True
 
-bot = commands.Bot(command_prefix='&', intents=intents, activity = discord.Game("beep beep."))
+bot = commands.Bot(command_prefix='vg!', intents=intents, activity = discord.Game("beep beep."))
 
 tweets_cache = []
 
@@ -57,6 +58,12 @@ async def on_ready():
 async def do_sync():
 	await share_posts()
 	await list_tweets()
+
+@bot.command()
+async def runitup(ctx):
+	resp = requests.get(url=config['DEFAULT']['RunItWebhook'])
+	if resp.status_code == 200:
+		await ctx.send("We gon run it up")
 
 async def list_tweets():
 	op = await TwitterClient.get_user_by_screen_name("956productions")
