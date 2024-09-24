@@ -53,7 +53,7 @@ async def on_ready():
 	logging.info(bot.user.name)
 	logging.info(bot.user.id)
 	logging.info('------')
-	#do_sync.start()
+	do_sync.start()
 
 @loop(minutes=5,reconnect=True)
 async def do_sync():
