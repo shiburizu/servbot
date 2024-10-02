@@ -75,9 +75,10 @@ async def runitup(ctx):
 
 @bot.command()
 async def updatesite(ctx):
+	global lastSiteRebuild
 	if ctx.channel.id == int(config['DEFAULT']['TechChannel']):
 		now = time.time()
-		if lastSiteRebuild != 0:			
+		if lastSiteRebuild != 0:
 			diff = now - lastSiteRebuild
 			if diff >= 600:
 				await ctx.send("Website update requested.")
