@@ -6,6 +6,8 @@ import re
 import os
 import json
 import requests
+import subprocess
+import time
 from twikit import Client as twClient
 from atproto import Client as atClient
 from mastodon import Mastodon as feClient
@@ -14,6 +16,8 @@ from discord.ext.tasks import loop
 
 TwitterClient = twClient('en-US',user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:130.0) Gecko/20100101 Firefox/130.0")
 TwitterRegex = r"(?:x|twitter)\.com\/([^\/]+)\/status\/([^\/?\s]+)"
+
+lastSiteRebuild = 0
 
 BskyClient = atClient(base_url='https://bsky.social')
 BskyRegex = r"bsky\.app\/profile\/([^\/?]+)\/post\/([^\/?\s]+)"
@@ -68,6 +72,23 @@ async def runitup(ctx):
 			await ctx.send("We gon run it up")
 		else:
 			await ctx.send("Wrong status code: %s. Double check make?" % resp.status_code)
+
+@bot.command()
+async def updatesite(ctx):
+	if ctx.channel.id == int(config['DEFAULT']['TechChannel']):
+		now = time.time()
+		if lastSiteRebuild != 0:			
+			diff = now - lastSiteRebuild
+			if diff >= 600:
+				await ctx.send("Website update requested.")
+				subprocess.run('cd /home/editor/vortexgallery.moe && git pull && python3 update_site.py >> ../site_update.log 2>&1 && git add -A && git commit -m "automated update" && git push',shell=True)
+				lastSiteRebuild = now
+			else:
+				await ctx.send("Please wait at least 10 minutes before sending a site update request. Last build was: <t:%s:R>" % int(lastSiteRebuild)) 
+		else:
+			await ctx.send("Website update requested.")
+			subprocess.run('cd /home/editor/vortexgallery.moe && git pull && python3 update_site.py >> ../site_update.log 2>&1 && git add -A && git commit -m "automated update" && git push',shell=True)
+			lastSiteRebuild = now
 
 async def list_tweets():
 	op = await TwitterClient.get_user_by_screen_name("956productions")
