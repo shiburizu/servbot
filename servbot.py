@@ -128,24 +128,32 @@ async def share_posts():
 	with open("message_cache.json","w") as file:
 		json.dump(message_cache,file)
 
+async def check_if_retweeted(post):
+	rt = await post.get_retweeters()
+	for u in rt:
+		if u.screen_name == config['DEFAULT']['TwitterUser']:
+			return True
+	return False
+
 async def share_twitter_posts(message):
 	twLinks = re.findall(TwitterRegex,message.content)
 	if len(twLinks) > 0:
 		for i in twLinks:
 			if message.id > int(config['DEFAULT']['StartMessage']):
 				post = await TwitterClient.get_tweet_by_id(i[1])
-				await post.retweet()
-				await asyncio.sleep(5)
-				rt = await post.get_retweeters()
-				#check that we ACTUALLY retweeted before we mark the link off as shared
-				shared = False
-				for u in rt:
-					if u.name == config['DEFAULT']['TwitterUser']:
-						shared = True
-				if shared != False:
+				shared = await check_if_retweeted(post)
+				if shared == True:
 					await message.add_reaction("🔁")
-					logging.info('Reposted Twitter post ID %s' % i[1])
+					logging.info('Confirmed RT for tweet ID %s' % i[1])
 					message_cache.append(message.id)
+				else:
+					await post.retweet()
+					await asyncio.sleep(3)
+					result = await check_if_retweeted(post)
+					if result == True:
+						await message.add_reaction("🔁")
+						logging.info('Confirmed RT for tweet ID %s' % i[1])
+						message_cache.append(message.id)			
 
 async def share_bsky_posts(message):
 	atLinks = re.findall(BskyRegex,message.content)
