@@ -120,7 +120,7 @@ async def share_posts():
 				await share_twitter_posts(m)
 
 				#get Bsky posts and RT
-				await share_bsky_posts(m)
+				#await share_bsky_posts(m)
 
 				#get masto posts and RT
 				await share_masto_posts(m)
@@ -207,7 +207,7 @@ async def login_bsky():
 
 async def main():
 	await login_twitter()
-	await login_bsky()
+	#await login_bsky()
 	async with bot:
 		await bot.start(BOT_TOKEN,reconnect=True)
 
