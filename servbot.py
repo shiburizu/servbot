@@ -14,7 +14,7 @@ from mastodon import Mastodon as feClient
 from discord.ext import commands
 from discord.ext.tasks import loop
 
-TwitterClient = twClient('en-US')
+TwitterClient = twClient('en-US',user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 14_6_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15")
 TwitterRegex = r"(?:x|twitter)\.com\/([^\/]+)\/status\/([^\/?\s]+)"
 
 lastSiteRebuild = 0
