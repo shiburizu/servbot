@@ -120,7 +120,7 @@ async def share_posts():
 				await share_twitter_posts(m)
 
 				#get Bsky posts and RT
-				#await share_bsky_posts(m)
+				await share_bsky_posts(m)
 
 				#get masto posts and RT
 				await share_masto_posts(m)
@@ -142,7 +142,7 @@ async def share_twitter_posts(message):
 				for u in rt:
 					if u.name == config['DEFAULT']['TwitterUser']:
 						shared = True
-				if shared == False:
+				if shared != False:
 					await message.add_reaction("🔁")
 					logging.info('Reposted Twitter post ID %s' % i[1])
 					message_cache.append(message.id)
@@ -207,7 +207,7 @@ async def login_bsky():
 
 async def main():
 	await login_twitter()
-	#await login_bsky()
+	await login_bsky()
 	async with bot:
 		await bot.start(BOT_TOKEN,reconnect=True)
 
