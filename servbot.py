@@ -61,7 +61,7 @@ async def on_ready():
 	logging.info(bot.user.id)
 	logging.info('------')
 	do_sync.start()
-	update_projects.start()
+	update_project_loop.start()
 
 @loop(minutes=5,reconnect=True)
 async def do_sync():
@@ -227,6 +227,9 @@ async def projects(ctx):
 	await update_projects()
 
 @loop(minutes=10,reconnect=True)
+async def update_project_loop():
+	await update_projects()
+
 async def update_projects():
 	projTbl = at.table(config['DEFAULT']['projBase'],config['DEFAULT']['projTable'])
 	taskTbl = at.table(config['DEFAULT']['taskBase'],config['DEFAULT']['taskTable'])
