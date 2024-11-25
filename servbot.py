@@ -79,14 +79,12 @@ async def runitup(ctx):
 			await ctx.send("Wrong status code: %s. Double check make?" % resp.status_code)
 
 @bot.command()
-
 @commands.has_permissions(manage_messages=True)
 async def shutdown(ctx):
 	await ctx.bot.close()
 	exit()
 
-
-async def combine_messages(msgs,dctx=None):
+async def combine_messages(msgs):
 	msglst = [""]
 	msgs.append("\n### Quick Links: ✅ [To-do List](https://956pro.com/todo)  📋 [Projects](https://956pro.com/projects)  📅 [Timeline](https://956pro.com/timeline)")
 	for m in msgs:
@@ -94,43 +92,39 @@ async def combine_messages(msgs,dctx=None):
 			msglst[-1] += m
 		else:
 			msglst.append(m)
-	if dctx == None:
-		return msglst
-	else:
-
-		msglst.insert(0,"# 956P Project Tracking\nUpdate projects and tasks on this list through Airtable:\n- [To-do List](https://956pro.com/todo)\n- [Project List](https://956pro.com/projects)\n- [Events Timeline](https://956pro.com/timeline)\n-# Last Updated <t:%s:R>, refreshes every 10 mins. Ping Shib if problems." % int(time.time()))
-		ch = bot.get_channel(int(config['DEFAULT']['projCh']))
-		if ch != None:
-			stale_messages = [message async for message in ch.history(limit=10,oldest_first=True)]
-			compare_list = []
-			update_needed = False
+	msglst.insert(0,"# 956P Project Tracking\nUpdate projects and tasks on this list through Airtable:\n- [To-do List](https://956pro.com/todo)\n- [Project List](https://956pro.com/projects)\n- [Events Timeline](https://956pro.com/timeline)\n-# Last Updated <t:%s:R>, refreshes every 10 mins. Ping Shib if problems." % int(time.time()))
+	ch = bot.get_channel(int(config['DEFAULT']['projCh']))
+	if ch != None:
+		stale_messages = [message async for message in ch.history(limit=10,oldest_first=True)]
+		compare_list = []
+		update_needed = False
+		for m in stale_messages:
+			compare_list.append(m.content)
+		if compare_list != []:
+			counter = 0
+			for i in compare_list:
+				try:
+					if counter != 0: #skip the first message, that's our header with the updating timestamp
+						if msglst[counter].strip() != i:
+							update_needed = True
+					counter += 1
+				except IndexError:
+					update_needed = True
+					break
+		else:
+			update_needed = True
+		if update_needed == True:
 			for m in stale_messages:
-				compare_list.append(m.content)
-			if compare_list != []:
-				counter = 0
-				for i in compare_list:
+				await m.edit(content="-# Reserved for to-do list.")
+			edit_messages = [message async for message in ch.history(limit=10,oldest_first=True)]
+			for m in msglst:
+				if m != '':
 					try:
-						if counter != 0: #skip the first message, that's our header with the updating timestamp
-							if msglst[counter].strip() != i:
-								update_needed = True
-						counter += 1
+						await edit_messages[msglst.index(m)].edit(content=m,suppress=True)
 					except IndexError:
-						update_needed = True
-						break
-			else:
-				update_needed = True
+						await ch.send(content=m,suppress_embeds=True)
 			if update_needed == True:
-				for m in stale_messages:
-					await m.edit(content="-# Reserved for to-do list.")
-				edit_messages = [message async for message in ch.history(limit=10,oldest_first=True)]
-				for m in msglst:
-					if m != '':
-						try:
-							await edit_messages[msglst.index(m)].edit(content=m,suppress=True)
-						except IndexError:
-							await ch.send(content=m,suppress_embeds=True)
-				if update_needed == True:
-					await ch.send("List updated!",delete_after=10)
+				await ch.send("List updated!",delete_after=10)
 
 async def generate_link(url):
 	req = requests.get("http://l.shib.live/link?key=%s&dest=%s" % (config['DEFAULT']['linkAPI'],url))
@@ -213,7 +207,7 @@ async def projects(ctx):
 	await update_projects(ctx)
 
 @loop(minutes=10,reconnect=True)
-async def update_projects(ctx):
+async def update_projects(ctx=None):
 	projTbl = at.table(config['DEFAULT']['projBase'],config['DEFAULT']['projTable'])
 	taskTbl = at.table(config['DEFAULT']['taskBase'],config['DEFAULT']['taskTable'])
 	events = {}
@@ -265,7 +259,7 @@ async def update_projects(ctx):
 	for e in events:
 		events[e].insert(0,"## __*%s*__\n" % e)
 		all_lists += events[e]
-	await combine_messages(all_lists,dctx=ctx)
+	await combine_messages(all_lists)
 
 		
 @bot.command()
