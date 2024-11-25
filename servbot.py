@@ -415,20 +415,23 @@ async def share_twitter_posts(message):
 	if len(twLinks) > 0:
 		for i in twLinks:
 			if message.id > int(config['DEFAULT']['StartMessage']):
-				post = await TwitterClient.get_tweet_by_id(i[1])
-				shared = await check_if_retweeted(post)
-				if shared == True:
-					await message.add_reaction("🔁")
-					logging.info('Confirmed RT for tweet ID %s' % i[1])
-					message_cache.append(message.id)
-				else:
-					await post.retweet()
-					await asyncio.sleep(3)
-					result = await check_if_retweeted(post)
-					if result == True:
+				try:
+					post = await TwitterClient.get_tweet_by_id(i[1])
+					shared = await check_if_retweeted(post)
+					if shared == True:
 						await message.add_reaction("🔁")
 						logging.info('Confirmed RT for tweet ID %s' % i[1])
-						message_cache.append(message.id)			
+						message_cache.append(message.id)
+					else:
+						await post.retweet()
+						await asyncio.sleep(3)
+						result = await check_if_retweeted(post)
+						if result == True:
+							await message.add_reaction("🔁")
+							logging.info('Confirmed RT for tweet ID %s' % i[1])
+							message_cache.append(message.id)
+				except AttributeError:
+					pass			
 
 async def share_bsky_posts(message):
 	atLinks = re.findall(BskyRegex,message.content)
