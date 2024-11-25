@@ -62,12 +62,21 @@ async def on_ready():
 	logging.info('------')
 	do_sync.start()
 	update_project_loop.start()
+	
+@commands.has_permissions(manage_messages=True)
+@bot.command()
+async def projects(ctx):
+	ctx.reply("Projects refreshing...",mention_author=False,delete_after=5)
+	await update_projects()
+
+@loop(minutes=10,reconnect=True)
+async def update_project_loop():
+	await update_projects()
 
 @loop(minutes=5,reconnect=True)
 async def do_sync():
 	await share_posts()
 	await list_tweets()
-	pass
 
 @commands.has_permissions(manage_messages=True)
 @bot.command()
@@ -220,15 +229,6 @@ async def newproj(ctx,*,arg):
 	projTbl = at.table(config['DEFAULT']['projBase'],config['DEFAULT']['projTable'])
 	new_proj = projTbl.create({'Project': arg})
 	await ctx.reply("Created task: [%s](%s)" % (new_proj['fields']['Project'],new_proj['fields']['Interface URL']),suppress_embeds=True)
-	
-@commands.has_permissions(manage_messages=True)
-@bot.command()
-async def projects(ctx):
-	await update_projects()
-
-@loop(minutes=10,reconnect=True)
-async def update_project_loop():
-	await update_projects()
 
 async def update_projects():
 	projTbl = at.table(config['DEFAULT']['projBase'],config['DEFAULT']['projTable'])
