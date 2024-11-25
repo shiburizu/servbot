@@ -267,8 +267,10 @@ async def update_projects():
 				else:
 					if task_string not in orphaned_tasks:
 						orphaned_tasks.append(task_string)
-
-	events['No Event Assigned'] += (orphaned_tasks)
+	if 'No Event Assigned' in events:
+		events['No Event Assigned'] += (orphaned_tasks)
+	else:
+		events['No Event Assigned'] = orphaned_tasks
 	all_lists = []
 	for e in events:
 		events[e].insert(0,"## __*%s*__\n" % e)
