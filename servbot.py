@@ -201,7 +201,20 @@ async def generate_project_string(project):
 	project_string += "\n"
 	return project_string
 
+@commands.has_permissions(manage_messages=True)
+@bot.command()
+async def newtask(ctx,*,arg):
+	taskTbl = at.table(config['DEFAULT']['taskBase'],config['DEFAULT']['taskTable'])
+	new_task = taskTbl.create({'Task': arg})
+	await ctx.reply("Created task: [%s](%s)" % (new_task['fields']['Task'],new_task['fields']['Interface URL']),suppress_embeds=True)
 
+@commands.has_permissions(manage_messages=True)
+@bot.command()
+async def newproj(ctx,*,arg):
+	projTbl = at.table(config['DEFAULT']['projBase'],config['DEFAULT']['projTable'])
+	new_proj = projTbl.create({'Project': arg})
+	await ctx.reply("Created task: [%s](%s)" % (new_proj['fields']['Project'],new_proj['fields']['Interface URL']),suppress_embeds=True)
+	
 @commands.has_permissions(manage_messages=True)
 @bot.command()
 async def projects(ctx):
@@ -390,7 +403,7 @@ async def share_posts():
 				await share_twitter_posts(m)
 
 				#get Bsky posts and RT
-				#await share_bsky_posts(m)
+				await share_bsky_posts(m)
 
 				#get masto posts and RT
 				await share_masto_posts(m)
