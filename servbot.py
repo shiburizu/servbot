@@ -28,7 +28,7 @@ MastoRegex = r"(https:\/\/[^\.]+\.[^\.\s|\n]+)"
 ## READ CONFIG FILE
 config = configparser.ConfigParser()
 config.read('config.ini')
-logging.basicConfig(level=logging.INFO) # ,filename=config['DEFAULT']['LogFile']
+logging.basicConfig(level=logging.INFO,filename=config['DEFAULT']['LogFile'])
 BOT_TOKEN = config['DEFAULT']['BotToken']
 
 at = Api(config['DEFAULT']["secret"])
@@ -64,8 +64,8 @@ async def on_ready():
 
 @loop(minutes=5,reconnect=True)
 async def do_sync():
-	#await share_posts()
-	#await list_tweets()
+	await share_posts()
+	await list_tweets()
 	pass
 
 @commands.has_permissions(manage_messages=True)
@@ -489,8 +489,8 @@ async def login_bsky():
 		file.write(BskyClient.export_session_string())
 
 async def main():
-	#await login_twitter()
-	#await login_bsky()
+	await login_twitter()
+	await login_bsky()
 	async with bot:
 		await bot.start(BOT_TOKEN,reconnect=True)
 
