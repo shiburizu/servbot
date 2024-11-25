@@ -185,6 +185,8 @@ async def generate_project_string(project):
 	if 'Project' not in project:
 		return ""
 	project_string = "## "
+	if 'Project Priority' not in project:
+		project['Project Priority'] = 'N/A'
 	if project['Project Priority'] == 'Tabled':
 		project_string += "💤` "
 	elif project['Project Priority'] == 'Low':
