@@ -225,7 +225,7 @@ async def update_projects():
 	projTbl = at.table(config['DEFAULT']['projBase'],config['DEFAULT']['projTable'])
 	taskTbl = at.table(config['DEFAULT']['taskBase'],config['DEFAULT']['taskTable'])
 	events = {}
-	orphaned_tasks = ["## `❔` No Project Assigned\n"]
+	orphaned_tasks = []
 
 	for projrow in projTbl.all(view=config['DEFAULT']['projView']):
 		info = projrow['fields']
@@ -267,11 +267,13 @@ async def update_projects():
 				else:
 					if task_string not in orphaned_tasks:
 						orphaned_tasks.append(task_string)
-	if 'No Event Assigned' in events:
-		events['No Event Assigned'] += (orphaned_tasks)
-	else:
-		events['No Event Assigned'] = orphaned_tasks
-	all_lists = []
+	if orphaned_tasks != []:
+		orphaned_tasks.append("## `❔` No Project Assigned\n")
+		if 'No Event Assigned' in events:
+			events['No Event Assigned'] += (orphaned_tasks)
+		else:
+			events['No Event Assigned'] = orphaned_tasks
+		all_lists = []
 	for e in events:
 		events[e].insert(0,"## __*%s*__\n" % e)
 		all_lists += events[e]
