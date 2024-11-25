@@ -61,6 +61,7 @@ async def on_ready():
 	logging.info(bot.user.id)
 	logging.info('------')
 	do_sync.start()
+	update_projects.start()
 
 @loop(minutes=5,reconnect=True)
 async def do_sync():
@@ -78,8 +79,8 @@ async def runitup(ctx):
 		else:
 			await ctx.send("Wrong status code: %s. Double check make?" % resp.status_code)
 
-@bot.command()
 @commands.has_permissions(manage_messages=True)
+@bot.command()
 async def shutdown(ctx):
 	await ctx.bot.close()
 	exit()
@@ -204,15 +205,15 @@ async def generate_project_string(project):
 @commands.has_permissions(manage_messages=True)
 @bot.command()
 async def projects(ctx):
-	await update_projects(ctx)
+	await update_projects()
 
 @loop(minutes=10,reconnect=True)
-async def update_projects(ctx=None):
+async def update_projects():
 	projTbl = at.table(config['DEFAULT']['projBase'],config['DEFAULT']['projTable'])
 	taskTbl = at.table(config['DEFAULT']['taskBase'],config['DEFAULT']['taskTable'])
 	events = {}
 	orphaned_tasks = ["## `❔` No Project Assigned\n"]
-	#TODO handle tasks with project assigned, no event, handle tasks with event assigned, no project
+
 	for projrow in projTbl.all(view=config['DEFAULT']['projView']):
 		info = projrow['fields']
 
