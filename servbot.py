@@ -135,6 +135,8 @@ async def generate_link(url):
 		return url
 
 async def generate_task_string(task,project_id):
+	if 'Task' not in task:
+		return ""
 	if 'Project' not in task:
 		task['Project'] = []
 	if 'Event Name-Rollup' not in task or task['Event Name-Rollup'] == []:
@@ -156,7 +158,7 @@ async def generate_task_string(task,project_id):
 		elif task['Task Priority'] == 'Urgent':
 			task_string += "`🚨` "
 		elif task['Task Priority'] == 'N/A':
-			task_string += "`❔` "
+			task_string += "`🔹` "
 		if 'Status' in task:
 			task_string += "[**[%s]**](%s) " % (task['Status'],task['Shortlink'])
 		else:
@@ -180,6 +182,8 @@ async def generate_task_string(task,project_id):
 	return None
 
 async def generate_project_string(project):
+	if 'Project' not in project:
+		return ""
 	project_string = "## "
 	if project['Project Priority'] == 'Tabled':
 		project_string += "💤` "
