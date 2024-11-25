@@ -369,7 +369,7 @@ async def updatesite(ctx):
 async def list_tweets():
 	op = await TwitterClient.get_user_by_screen_name("956productions")
 	posts = await TwitterClient.get_user_tweets(op.id,"Tweets")
-	for i in posts:
+	for i in reversed(posts):
 		if int(i.id) not in tweets_cache and int(i.id) > int(config['DEFAULT']['StartTweet']) and i.text[:2] != "RT":
 			tweets_cache.append(int(i.id))
 			await bot.get_channel(int(config['DEFAULT']['StaffChannel'])).send("RTs appreciated! 🔗 https://vxtwitter.com/956productions/status/%s" % i.id)
