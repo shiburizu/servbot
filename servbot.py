@@ -228,7 +228,7 @@ async def newtask(ctx,*,arg):
 async def newevent(ctx,*,arg):
 	taskTbl = at.table(config['DEFAULT']['timeBase'],config['DEFAULT']['timeTable'])
 	new_task = taskTbl.create({'Project': arg})
-	await ctx.reply("Created timeline event: [%s](%s)" % (new_task['fields']['Task'],new_task['fields']['Interface URL']),suppress_embeds=True)
+	await ctx.reply("Created timeline event: [%s](%s)" % (new_task['fields']['Project'],new_task['fields']['Interface URL']),suppress_embeds=True)
 
 @commands.has_permissions(manage_messages=True)
 @bot.command()
