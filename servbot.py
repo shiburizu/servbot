@@ -8,6 +8,7 @@ import json
 import requests
 import subprocess
 import time
+import sys
 from twikit import Client as twClient
 from atproto import Client as atClient
 from mastodon import Mastodon as feClient
@@ -28,7 +29,10 @@ MastoRegex = r"(https:\/\/[^\.]+\.[^\.\s|\n]+)"
 ## READ CONFIG FILE
 config = configparser.ConfigParser()
 config.read('config.ini')
-logging.basicConfig(level=logging.INFO,filename=config['DEFAULT']['LogFile'])
+if "--no-log" in sys.argv:
+	logging.basicConfig(level=logging.INFO)
+else:
+	logging.basicConfig(level=logging.INFO,filename=config['DEFAULT']['LogFile'])
 BOT_TOKEN = config['DEFAULT']['BotToken']
 
 at = Api(config['DEFAULT']["secret"])
@@ -60,7 +64,8 @@ async def on_ready():
 	logging.info(bot.user.name)
 	logging.info(bot.user.id)
 	logging.info('------')
-	do_sync.start()
+	if "--no-socials" not in sys.argv:
+		do_sync.start()
 	update_project_loop.start()
 	
 @commands.has_permissions(manage_messages=True)
@@ -109,7 +114,8 @@ async def combine_messages(msgs):
 		compare_list = []
 		update_needed = False
 		for m in stale_messages:
-			compare_list.append(m.content)
+			if m.content != "List updated!" and m.content != "-# Reserved for to-do list.":
+				compare_list.append(m.content)
 		if compare_list != []:
 			counter = 0
 			for i in compare_list:
@@ -520,8 +526,9 @@ async def login_bsky():
 		file.write(BskyClient.export_session_string())
 
 async def main():
-	await login_twitter()
-	await login_bsky()
+	if "--no-socials" not in sys.argv:
+		await login_twitter()
+		await login_bsky()
 	async with bot:
 		await bot.start(BOT_TOKEN,reconnect=True)
 
