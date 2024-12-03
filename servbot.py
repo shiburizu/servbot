@@ -16,7 +16,7 @@ from discord.ext import commands
 from discord.ext.tasks import loop
 from pyairtable import Api
 
-TwitterClient = twClient('en-US',user_agent="Mozilla/5.0 (platform; rv:geckoversion) Gecko/geckotrail Firefox/firefoxversion")
+TwitterClient = twClient('en-US',user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0")
 TwitterRegex = r"(?:x|twitter)\.com\/([^\/]+)\/status\/([^\/?\s]+)"
 
 lastSiteRebuild = 0
@@ -528,7 +528,7 @@ async def login_bsky():
 async def main():
 	if "--no-socials" not in sys.argv:
 		await login_twitter()
-		await login_bsky()
+		#await login_bsky()
 	async with bot:
 		await bot.start(BOT_TOKEN,reconnect=True)
 
