@@ -10,6 +10,7 @@ import subprocess
 import time
 import sys
 from twikit import Client as twClient
+from twikit import errors as twErrors
 from atproto import Client as atClient
 from mastodon import Mastodon as feClient
 from discord.ext import commands
@@ -401,8 +402,14 @@ async def updatesite(ctx):
 		lastSiteRebuild = now
 
 async def list_tweets():
-	op = await TwitterClient.get_user_by_screen_name("956productions")
-	posts = await TwitterClient.get_user_tweets(op.id,"Tweets")
+	op = None
+	posts = None
+	try:
+		op = await TwitterClient.get_user_by_screen_name("956productions")
+		posts = await TwitterClient.get_user_tweets(op.id,"Tweets")
+	except twErrors.AccountSuspended:
+		logging.warning("Got AccountSuspended error from Twitter, skipping.")
+		return False
 	for i in reversed(posts):
 		if int(i.id) not in tweets_cache and int(i.id) > int(config['DEFAULT']['StartTweet']) and i.text[:2] != "RT":
 			tweets_cache.append(int(i.id))
@@ -528,7 +535,7 @@ async def login_bsky():
 async def main():
 	if "--no-socials" not in sys.argv:
 		await login_twitter()
-		await login_bsky()
+		#await login_bsky()
 	async with bot:
 		await bot.start(BOT_TOKEN,reconnect=True)
 
