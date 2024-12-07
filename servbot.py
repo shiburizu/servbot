@@ -535,7 +535,7 @@ async def login_bsky():
 async def main():
 	if "--no-socials" not in sys.argv:
 		await login_twitter()
-		#await login_bsky()
+		await login_bsky()
 	async with bot:
 		await bot.start(BOT_TOKEN,reconnect=True)
 
