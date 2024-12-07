@@ -445,11 +445,14 @@ async def share_posts():
 		json.dump(message_cache,file)
 
 async def check_if_retweeted(post):
-	rt = await post.get_retweeters()
-	for u in rt:
-		if u.screen_name == config['DEFAULT']['TwitterUser']:
-			return True
-	return False
+	try:
+		rt = await post.get_retweeters()
+		for u in rt:
+			if u.screen_name == config['DEFAULT']['TwitterUser']:
+				return True
+		return False
+	except:
+		return False
 
 async def share_twitter_posts(message):
 	twLinks = re.findall(TwitterRegex,message.content)
@@ -471,8 +474,8 @@ async def share_twitter_posts(message):
 							await message.add_reaction("🔁")
 							logging.info('Confirmed RT for tweet ID %s' % i[1])
 							message_cache.append(message.id)
-				except AttributeError:
-					pass			
+				except:
+					pass
 
 async def share_bsky_posts(message):
 	atLinks = re.findall(BskyRegex,message.content)
