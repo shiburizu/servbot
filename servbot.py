@@ -72,7 +72,7 @@ async def on_ready():
 @commands.has_permissions(manage_messages=True)
 @bot.command()
 async def projects(ctx):
-	ctx.reply("Projects refreshing...",mention_author=False,delete_after=5)
+	await ctx.reply("Projects refreshing...",mention_author=False,delete_after=5)
 	await update_projects()
 
 @loop(minutes=10,reconnect=True)
