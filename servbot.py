@@ -410,6 +410,9 @@ async def list_tweets():
 	except twErrors.AccountSuspended:
 		logging.warning("Got AccountSuspended error from Twitter, skipping.")
 		return False
+	except twErrors.UserNotFound:
+		logging.warning("Got UserNotFound error, skipping.")
+		return False
 	for i in reversed(posts):
 		if int(i.id) not in tweets_cache and int(i.id) > int(config['DEFAULT']['StartTweet']) and i.text[:2] != "RT":
 			tweets_cache.append(int(i.id))
