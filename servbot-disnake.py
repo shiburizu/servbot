@@ -251,8 +251,9 @@ async def volsearch_by_field(tag,event_name,field='References',dup=[]):
 	related_by_field = []	
 	volTbl = at.table(config['DEFAULT']['volBase'],config['DEFAULT']['volTable'])
 	for row in volTbl.all(view=config['DEFAULT']['volView']):
-		if row['id'] in dup:
-			continue
+		for d in dup:
+			if row['id'] == d['id']:
+				continue
 		if 'Event' not in row['fields'] or field not in row['fields']:
 			continue
 		if event in row['fields']['Event'] and row['fields']['Tag'].lower() != tag.lower():
@@ -274,8 +275,9 @@ async def volsearch_by_tourney(tag,event_name,dup=[]):
 			break
 	if match: #find same region and desired games
 		for row in volTbl.all(view=config['DEFAULT']['volView']):
-			if row['id'] in dup:
-				continue
+			for d in dup:
+				if row['id'] == d['id']:
+					continue
 			if 'Region-Encoded' not in row['fields'] or 'Desired Games' not in row['fields'] or 'Event' not in row['fields']:
 				continue
 			if event in row['fields']['Event'] and row['fields']['Tag'].lower() != tag.lower():
