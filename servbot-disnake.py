@@ -206,12 +206,12 @@ async def volsearch(ctx,
 		msg += "__Referenced applicants__\n"
 		for i in res_references:
 			msg += await volunteer_status_string(i,config['DEFAULT']['volBase'],config['DEFAULT']['volTable'],config['DEFAULT']['volView'])
-	res_related = await volsearch_by_field(tag,event_name,'Related Applicants')
+	res_related = await volsearch_by_field(tag,event_name,'Related Applicants',dup=res_references)
 	if res_references != []:
 		msg += "__Related applicants__\n"
 		for i in res_related:
 			msg += await volunteer_status_string(i,config['DEFAULT']['volBase'],config['DEFAULT']['volTable'],config['DEFAULT']['volView'])
-	res_tourney = await volsearch_by_tourney(tag,event_name)
+	res_tourney = await volsearch_by_tourney(tag,event_name,dup=res_references+res_related)
 	if res_tourney != []:
 		msg += "__Same Region+Game Choice(s)__\n"
 		for i in res_tourney:
@@ -244,13 +244,15 @@ async def volunteer_status_string(row,base,id,view):
 	)
 	return msg
 
-async def volsearch_by_field(tag,event_name,field='References'):
+async def volsearch_by_field(tag,event_name,field='References',dup=[]):
 	if event_name not in events_list:
 		return []
 	event = events_list[event_name]
 	related_by_field = []	
 	volTbl = at.table(config['DEFAULT']['volBase'],config['DEFAULT']['volTable'])
 	for row in volTbl.all(view=config['DEFAULT']['volView']):
+		if row['id'] in dup:
+			continue
 		if 'Event' not in row['fields'] or field not in row['fields']:
 			continue
 		if event in row['fields']['Event'] and row['fields']['Tag'].lower() != tag.lower():
@@ -259,7 +261,7 @@ async def volsearch_by_field(tag,event_name,field='References'):
 					related_by_field.append(row)
 	return related_by_field
 
-async def volsearch_by_tourney(tag,event_name):
+async def volsearch_by_tourney(tag,event_name,dup=[]):
 	if event_name not in events_list:
 		return []
 	event = events_list[event_name]
@@ -272,6 +274,8 @@ async def volsearch_by_tourney(tag,event_name):
 			break
 	if match: #find same region and desired games
 		for row in volTbl.all(view=config['DEFAULT']['volView']):
+			if row['id'] in dup:
+				continue
 			if 'Region-Encoded' not in row['fields'] or 'Desired Games' not in row['fields'] or 'Event' not in row['fields']:
 				continue
 			if event in row['fields']['Event'] and row['fields']['Tag'].lower() != tag.lower():
@@ -642,7 +646,6 @@ async def list_tweets():
 
 async def share_posts():
 	messages = [message async for message in bot.get_channel(int(config['DEFAULT']['StaffChannel'])).history(limit=50)]
-
 	for m in messages:
 		if m.author.id != bot.user.id and m.id not in message_cache:
 			alreadyShared = False
@@ -653,15 +656,9 @@ async def share_posts():
 						if u.id == int(config['DEFAULT']['BotID']):
 							alreadyShared = True
 			if alreadyShared == False:
-				#get Twitter posts and RT
-				await share_twitter_posts(m)
-
-				#get Bsky posts and RT
-				await share_bsky_posts(m)
-
-				#get masto posts and RT
-				await share_masto_posts(m)
-
+				await share_twitter_posts(m) #get Twitter posts and RT
+				await share_bsky_posts(m) #get Bsky posts and RT
+				await share_masto_posts(m) #get masto posts and RT
 	with open("message_cache.json","w") as file:
 		json.dump(message_cache,file)
 
