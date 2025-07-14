@@ -81,9 +81,9 @@ async def on_ready():
 	refresh_slash_data.start()
 	
 @commands.has_permissions(manage_messages=True)
-@bot.command()
-async def projects(ctx):
-	await ctx.reply("Projects refreshing...",mention_author=False,delete_after=5)
+@bot.slash_command()
+async def refreshtodo(ctx):
+	await ctx.response.send_message("To-do list refreshing!",mention_author=False,delete_after=5)
 	await update_projects()
 
 async def project_hint(ctx,string: str):
@@ -422,8 +422,8 @@ async def generate_task_string(task,project_id):
 		else:
 			task_string += "[**[??]**](%s) " % task['Status']
 		task_string += task['Task']
-		if 'Assignees-disnake' in task:
-			for d in task['Assignees-disnake']:
+		if 'Assignees-Discord' in task:
+			for d in task['Assignees-Discord']:
 				task_string+= " <@%s>" % d
 		if 'Due Date-Timestamp' in task:
 			task_string += " `⏰ due` <t:%s:R>" % task['Due Date-Timestamp']
@@ -525,14 +525,15 @@ async def update_projects():
 	await combine_messages(all_lists)
 
 		
-@bot.command()
 @commands.has_permissions(manage_messages=True)
+@bot.slash_command()
 async def todo(ctx):
+	await ctx.response.defer()
 	table = at.table(config['DEFAULT']['taskBase'],config['DEFAULT']['taskTable'])
 	taskdict = {}
 	for row in table.all(view=config['DEFAULT']['taskView']):
-		if 'Assignees-disnake' in row['fields']:
-			if str(ctx.author.id) in row['fields']['Assignees-disnake']:
+		if 'Assignees-Discord' in row['fields']:
+			if str(ctx.author.id) in row['fields']['Assignees-Discord']:
 				info = row['fields']
 				if 'Project Priority' not in info:
 					info['Project Priority'] = "N/A"
@@ -597,12 +598,12 @@ async def todo(ctx):
 			dm = await ctx.author.create_dm()
 			for m in msg:
 				await dm.send(m,suppress_embeds=True,mention_author=False)
-			await ctx.reply("Task list sent via DM!",mention_author=False)
+			await ctx.edit_original_response("Task list sent via DM!",mention_author=False)
 		else:
 			for m in msg:
-				await ctx.send(m,suppress_embeds=True,mention_author=False)
+				await ctx.edit_original_response(m,suppress_embeds=True,mention_author=False)
 	else:
-		await ctx.reply("No tasks are assigned to you right now. Enjoy your day!",mention_author=False)
+		await ctx.edit_original_response("No tasks are assigned to you right now. Enjoy your day!",mention_author=False)
 
 
 @commands.has_permissions(manage_messages=True)
@@ -613,13 +614,13 @@ async def updatesite(ctx):
 	if lastSiteRebuild != 0:
 		diff = now - lastSiteRebuild
 		if diff >= 600:
-			await ctx.send("Website update requested.")
+			await ctx.response.send_message("Website update requested.")
 			subprocess.run('cd /home/editor/vortexgallery.moe && git pull && python3 update_site.py >> ../site_update.log 2>&1 && git add -A && git commit -m "automated update" && git push',shell=True)
 			lastSiteRebuild = now
 		else:
 			await ctx.send("Please wait at least 10 minutes before sending a site update request. Last build was: <t:%s:R>" % int(lastSiteRebuild)) 
 	else:
-		await ctx.send("Website update requested.")
+		await ctx.response.send_message("Website update requested.")
 		subprocess.run('cd /home/editor/vortexgallery.moe && git pull && python3 update_site.py >> ../site_update.log 2>&1 && git add -A && git commit -m "automated update" && git push',shell=True)
 		lastSiteRebuild = now
 
