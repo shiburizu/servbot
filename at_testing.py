@@ -2,7 +2,6 @@ from pyairtable import Api
 import configparser
 import logging
 import sys 
-import thefuzz
 
 config = configparser.ConfigParser()
 config.read('config.ini')
