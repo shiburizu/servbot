@@ -83,7 +83,7 @@ async def on_ready():
 @commands.has_permissions(manage_messages=True)
 @bot.slash_command()
 async def refreshtodo(ctx):
-	await ctx.response.send_message("To-do list refreshing!",mention_author=False,delete_after=5)
+	await ctx.response.send_message("To-do list refreshing!")
 	await update_projects()
 
 async def project_hint(ctx,string: str):
@@ -597,13 +597,13 @@ async def todo(ctx):
 		if ctx.guild != None:
 			dm = await ctx.author.create_dm()
 			for m in msg:
-				await dm.send(m,suppress_embeds=True,mention_author=False)
-			await ctx.edit_original_response("Task list sent via DM!",mention_author=False)
+				await dm.send(m,suppress_embeds=True)
+			await ctx.edit_original_response("Task list sent via DM!")
 		else:
 			for m in msg:
-				await ctx.edit_original_response(m,suppress_embeds=True,mention_author=False)
+				await ctx.edit_original_response(m,suppress_embeds=True)
 	else:
-		await ctx.edit_original_response("No tasks are assigned to you right now. Enjoy your day!",mention_author=False)
+		await ctx.edit_original_response("No tasks are assigned to you right now. Enjoy your day!")
 
 
 @commands.has_permissions(manage_messages=True)
