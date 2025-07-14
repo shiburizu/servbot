@@ -203,17 +203,17 @@ async def volsearch(ctx,
 	msg = ""
 	res_references = await volsearch_by_field(tag,event_name,'References')
 	if res_references != []:
-		msg += "__Referenced applicants__\n"
+		msg += "__Listed as Referral__\n"
 		for i in res_references:
 			msg += await volunteer_status_string(i,config['DEFAULT']['volBase'],config['DEFAULT']['volTable'],config['DEFAULT']['volView'])
 	res_related = await volsearch_by_field(tag,event_name,'Related Applicants',dup=res_references)
 	if res_references != []:
-		msg += "__Related applicants__\n"
+		msg += "__Listed as Related__\n"
 		for i in res_related:
 			msg += await volunteer_status_string(i,config['DEFAULT']['volBase'],config['DEFAULT']['volTable'],config['DEFAULT']['volView'])
 	res_tourney = await volsearch_by_tourney(tag,event_name,dup=res_references+res_related)
 	if res_tourney != []:
-		msg += "__Same Region+Game Choice(s)__\n"
+		msg += "__Listed Same Region+Game Choice(s)__\n"
 		for i in res_tourney:
 			msg += await volunteer_status_string(i,config['DEFAULT']['volBase'],config['DEFAULT']['volTable'],config['DEFAULT']['volView'])
 	if msg == "":
