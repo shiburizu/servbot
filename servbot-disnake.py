@@ -54,6 +54,7 @@ message_cache = []
 projects_list = ['Unloaded']
 staff_list = ['Unloaded']
 events_list = ['Unloaded']
+staff_ids = {}
 
 if os.path.isfile('tweets_cache.json'):
 	with open('tweets_cache.json') as file:
@@ -74,8 +75,9 @@ async def on_ready():
 		await login_twitter()
 		await login_bsky()
 		do_sync.start()
-
-	# update_project_loop.start()
+	if "--no-todo" not in sys.argv:
+		update_project_loop.start()
+		
 	refresh_slash_data.start()
 	
 @commands.has_permissions(manage_messages=True)
@@ -96,15 +98,65 @@ async def event_hint(ctx,string: str):
 	string = string.lower()
 	return [p for p in events_list if string in p.lower()]
 
+async def event_vol_hint(ctx,string: str):
+	string = string.lower()
+	return [p for p in events_list if string in p.lower()]
+
+@commands.has_permissions(manage_messages=True)
+@bot.slash_command(description="Create a new timeline item in Airtable.")
+async def timeline(ctx, name: str = commands.Param(description='Timeline event name.'),
+				type: str = commands.Param(default='',description='Event type.',choices=['Announcement','Start Time','Deadline','Social','Meeting','External','Working','Travel']),
+				start: str = commands.Param(default='',name='start',description='Start date in MM/DD/YYYY format.'), 
+				end: str = commands.Param(default='',name='end',description='End date in MM/DD/YYYY format.'), 
+				comments: str = commands.Param(default='',description='Brief description of item.'),
+				event: str = commands.Param(default='',description='Parent event of item.',autocomplete=event_hint),
+				whomst: str = commands.Param(default='',name='assignees',description='956P Staff assigned to item. Comma-separated list accepted.',autocomplete=staff_hint)):
+	
+	whomst_ids = []
+	ignored = []
+	if "," in whomst:
+		whomst = whomst.split(",")
+		for w in whomst:
+			if w in staff_list:
+				whomst_ids.append(staff_list[w])
+			else:
+				ignored.append(w)
+	else:
+		if whomst != '':
+			if whomst in staff_list:
+				whomst_ids = [staff_list[whomst]]
+			else:
+				ignored.append(whomst)
+
+	event_id = []
+	if event in events_list:
+		event_id = [events_list[event]]
+	
+	extra = ""
+	if ignored != []:
+		extra += "\nIgnored unknown assignees: %s" % ",".join(ignored)
+
+	taskTbl = at.table(config['DEFAULT']['timeBase'],config['DEFAULT']['timeTable'])
+	new_task = taskTbl.create({'Project': name,'Type': type,'Comments': comments,'Assignees': whomst_ids,'Date': start,'End Date': end,'Linked Event': event_id})
+	await ctx.response.send_message("Created Timeline item: [%s](%s)%s" % (new_task['fields']['Project'],new_task['fields']['Interface URL'],extra),suppress_embeds=True)
+
 @commands.has_permissions(manage_messages=True)
 @bot.slash_command(description="Create a new project item in Airtable.")
 async def project(ctx, project: str = commands.Param(description='Project name.'),
-				desc: str = commands.Param(name='description',description='Project description.'), 
-				event: str = commands.Param(default='956P',name='event',description='Parent event of project. Should already exist in Airtable. Defaults to "956P".',autocomplete=project_hint),
+				desc: str = commands.Param(default='',name='description',description='Project description.'), 
+				event: str = commands.Param(default='',name='event',description='Parent event of project.',autocomplete=event_hint),
 				status: str = commands.Param(default='Todo',description='Current project status. Defaults to "todo".',choices=['Todo','In Progress','Done','Waiting','Clarification Needed','Dropped']),
 				priority: str = commands.Param(default='',description='Project priority.',choices=['Low','Medium','High','Urgent','Tabled']),
 				due: str = commands.Param(default='',name='due',description='Due date in MM/DD/YYYY format.')):
-	pass
+	
+	event_id = []
+	if event in events_list:
+		event_id = [events_list[event]]
+
+	projTbl = at.table(config['DEFAULT']['projBase'],config['DEFAULT']['projTable'])
+	new_proj = projTbl.create({'Project': project,'Description':desc,'Event':event_id,'Status':status,'Project Priority':priority,'Due Date':due})
+	await ctx.response.send_message("Created Project: [%s](%s)" % (new_proj['fields']['Project'],new_proj['fields']['Interface URL']),suppress_embeds=True)
+	await refresh_slash_data()
 
 @commands.has_permissions(manage_messages=True)
 @bot.slash_command(description="Create a new task item in Airtable.")
@@ -140,8 +192,96 @@ async def task(ctx, task: str = commands.Param(description='Task name.'),
 
 	taskTbl = at.table(config['DEFAULT']['taskBase'],config['DEFAULT']['taskTable'])
 	new_task = taskTbl.create({'Task': task,'Project': project_id,'Assignees': whomst_ids,'Due Date': due})
-	await ctx.response.send_message("Created task: [%s](%s)%s" % (new_task['fields']['Task'],new_task['fields']['Interface URL'],extra),suppress_embeds=True)
+	await ctx.response.send_message("Created Task: [%s](%s)%s" % (new_task['fields']['Task'],new_task['fields']['Interface URL'],extra),suppress_embeds=True)
 
+@commands.has_permissions(manage_messages=True)
+@bot.slash_command(description="Provide a volunteer tag and event, and retrieve a list of related applicants by multiple criteria.")
+async def volsearch(ctx, 
+					tag: str = commands.Param(description='Volunteer tag.'),
+					event_name: str = commands.Param(name='event',description='Event to search.',autocomplete=event_vol_hint)):
+	await ctx.response.defer()
+	msg = ""
+	res_references = await volsearch_by_field(tag,event_name,'References')
+	if res_references != []:
+		msg += "__Referenced applicants__\n"
+		for i in res_references:
+			msg += await volunteer_status_string(i,config['DEFAULT']['volBase'],config['DEFAULT']['volTable'],config['DEFAULT']['volView'])
+	res_related = await volsearch_by_field(tag,event_name,'Related Applicants')
+	if res_references != []:
+		msg += "__Related applicants__\n"
+		for i in res_related:
+			msg += await volunteer_status_string(i,config['DEFAULT']['volBase'],config['DEFAULT']['volTable'],config['DEFAULT']['volView'])
+	res_tourney = await volsearch_by_tourney(tag,event_name)
+	if res_tourney != []:
+		msg += "__Same Region+Game Choice(s)__\n"
+		for i in res_tourney:
+			msg += await volunteer_status_string(i,config['DEFAULT']['volBase'],config['DEFAULT']['volTable'],config['DEFAULT']['volView'])
+	if msg == "":
+		msg = "No related volunteers found for %s in %s." % (tag, event_name)
+	else:
+		msg = "Found related volunteers for %s in %s:\n" % (tag, event_name) + msg
+	await ctx.edit_original_response(msg,suppress_embeds=True)
+
+async def volunteer_status_string(row,base,id,view):
+	reviewers = "N/A"
+	if 'Reviewer' in row['fields']:
+		reviewers = []
+		for r in row['fields']['Reviewer']:
+			if r in staff_ids:
+				reviewers.append(staff_ids[r])
+		reviewers = ",".join(reviewers)
+	if 'Process' not in row['fields']:
+		row['fields']['Process'] = "Todo"
+	msg = "- [%s](https://airtable.com/%s/%s/%s/%s) [%s by %s] - *Discord:* `%s`\n" % (
+		row['fields']['Tag'],
+		base,
+		id,
+		view,
+		row['id'],
+		row['fields']['Process'],
+		reviewers,
+		row['fields']['Discord']
+	)
+	return msg
+
+async def volsearch_by_field(tag,event_name,field='References'):
+	if event_name not in events_list:
+		return []
+	event = events_list[event_name]
+	related_by_field = []	
+	volTbl = at.table(config['DEFAULT']['volBase'],config['DEFAULT']['volTable'])
+	for row in volTbl.all(view=config['DEFAULT']['volView']):
+		if 'Event' not in row['fields'] or field not in row['fields']:
+			continue
+		if event in row['fields']['Event'] and row['fields']['Tag'].lower() != tag.lower():
+			if field in row['fields']:
+				if tag.lower() in row['fields'][field].lower():
+					related_by_field.append(row)
+	return related_by_field
+
+async def volsearch_by_tourney(tag,event_name):
+	if event_name not in events_list:
+		return []
+	event = events_list[event_name]
+	related_by_event = []
+	match = None
+	volTbl = at.table(config['DEFAULT']['volBase'],config['DEFAULT']['volTable'])
+	for row in volTbl.all(view=config['DEFAULT']['volView']): #find match
+		if event in row['fields']['Event'] and row['fields']['Tag'].lower() == tag.lower():
+			match = row
+			break
+	if match: #find same region and desired games
+		for row in volTbl.all(view=config['DEFAULT']['volView']):
+			if 'Region-Encoded' not in row['fields'] or 'Desired Games' not in row['fields'] or 'Event' not in row['fields']:
+				continue
+			if event in row['fields']['Event'] and row['fields']['Tag'].lower() != tag.lower():
+				for game in match['fields']['Desired Games']:
+					if game in row['fields']['Desired Games']:
+						for region in match['fields']['Region-Encoded']:
+							if region in match['fields']['Region-Encoded']:
+								related_by_event.append(row)
+	return related_by_event
+	
 @loop(minutes=10,reconnect=True)
 async def update_project_loop():
 	await update_projects()
@@ -171,6 +311,10 @@ async def refresh_slash_data():
 		config['DEFAULT']["staffTable"],
 		config['DEFAULT']["staffView"],
 		'Tag')
+	# refresh IDs of staff for lookup
+	staffTbl = at.table(config['DEFAULT']["staffBase"],config['DEFAULT']["staffTable"])
+	for row in staffTbl.all(view=config['DEFAULT']["staffView"]):
+		staff_ids[row['id']] = row['fields']['Tag']
 	events_list = await get_all_linked_rows(
 		config['DEFAULT']["eventBase"],
 		config['DEFAULT']["eventTable"],
@@ -178,16 +322,16 @@ async def refresh_slash_data():
 		'Name-Short')
 
 @commands.has_permissions(manage_messages=True)
-@bot.command()
+@bot.slash_command(description="Run it up!")
 async def runitup(ctx):
 	if ctx.channel.id == int(config['DEFAULT']['TechChannel']):
 		resp = requests.get(url=config['DEFAULT']['RunItWebhook'])
 		if resp.status_code == 200:
-			await ctx.send("We gon run it up")
+			await ctx.response.send_message("We gon run it up")
 		else:
-			await ctx.send("Wrong status code: %s. Double check make?" % resp.status_code)
+			await ctx.response.send_message("Wrong status code: %s. Double check make?" % resp.status_code)
 
-@commands.has_permissions(manage_messages=True)
+@commands.is_owner()
 @bot.slash_command()
 async def shutdown(ctx):
 	await ctx.response.send_message("Bye bye!")
@@ -317,19 +461,6 @@ async def generate_project_string(project):
 	project_string += "\n"
 	return project_string
 
-@commands.has_permissions(manage_messages=True)
-@bot.command()
-async def newevent(ctx,*,arg):
-	taskTbl = at.table(config['DEFAULT']['timeBase'],config['DEFAULT']['timeTable'])
-	new_task = taskTbl.create({'Project': arg})
-	await ctx.reply("Created timeline event: [%s](%s)" % (new_task['fields']['Project'],new_task['fields']['Interface URL']),suppress_embeds=True)
-
-@commands.has_permissions(manage_messages=True)
-@bot.command()
-async def newproj(ctx,*,arg):
-	projTbl = at.table(config['DEFAULT']['projBase'],config['DEFAULT']['projTable'])
-	new_proj = projTbl.create({'Project': arg})
-	await ctx.reply("Created task: [%s](%s)" % (new_proj['fields']['Project'],new_proj['fields']['Interface URL']),suppress_embeds=True)
 
 async def update_projects():
 	projTbl = at.table(config['DEFAULT']['projBase'],config['DEFAULT']['projTable'])
@@ -470,8 +601,8 @@ async def todo(ctx):
 		await ctx.reply("No tasks are assigned to you right now. Enjoy your day!",mention_author=False)
 
 
-@bot.command()
 @commands.has_permissions(manage_messages=True)
+@bot.slash_command(description="Forces a rebuild of the site based on latest Airtable data. Can only run every 10 minutes.")
 async def updatesite(ctx):
 	global lastSiteRebuild
 	now = time.time()
@@ -572,14 +703,15 @@ async def share_bsky_posts(message):
 	if len(atLinks) > 0:
 		for i in atLinks:
 			if message.id > int(config['DEFAULT']['StartMessage']):
-				try:
-					post = BskyClient.get_post(i[1],i[0])
-					BskyClient.repost(uri=post.uri,cid=post.cid)
-					logging.info('Reposted Bsky post ID %s' % i[1])
-					await message.add_reaction("🔁")
-					message_cache.append(message.id)
-				except disnake.errors.HTTPException:
-					pass
+				if i[0] != '956.productions':
+					try:
+						post = BskyClient.get_post(i[1],i[0])
+						BskyClient.repost(uri=post.uri,cid=post.cid)
+						logging.info('Reposted Bsky post ID %s' % i[1])
+						await message.add_reaction("🔁")
+						message_cache.append(message.id)
+					except disnake.errors.HTTPException:
+						pass
 
 async def share_masto_posts(message):
 	feLinks = re.findall(MastoRegex,message.content)

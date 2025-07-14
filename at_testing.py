@@ -2,6 +2,7 @@ from pyairtable import Api
 import configparser
 import logging
 import sys 
+import thefuzz
 
 config = configparser.ConfigParser()
 config.read('config.ini')
@@ -37,8 +38,46 @@ def get_events(base,id,view):
 		new_list.append(row['fields']['Name-Short'])
 	print(new_list)
 
-get_projects(config['DEFAULT']["projBase"],config['DEFAULT']["projTable"],config['DEFAULT']["projView"])
+def search_related_vols(base,id,view,tag,event):
+	volTbl = at.table(base,id)
 
-get_staff(config['DEFAULT']["staffBase"],config['DEFAULT']["staffTable"],config['DEFAULT']["staffView"])
+	match = None
 
-get_events(config['DEFAULT']["eventBase"],config['DEFAULT']["eventTable"],config['DEFAULT']["eventView"])
+	for row in volTbl.all(view=view):
+		if row['fields']['Tag'] == tag and event in row['fields']['Event']:
+			match = row
+	
+	if match:
+		print(match['fields'])
+	else:
+		print("No Match.")
+		exit()
+
+	related_by_app = []		
+	related_by_event = []
+	
+	# abbrevs = ["TO","ST","SO","RE","TR","MO"]
+	for row in volTbl.all(view=view):
+		# check related applicants
+		if event in row['fields']['Event'] and row['fields']['Tag'] != match['fields']['Tag']:
+			if 'References' in row['fields']:
+				if match['fields']['Tag'].lower() in row['fields']['References'].lower():
+					print("Found by applicant: %s" % row['fields']['Tag'])
+					related_by_app.append(row)
+					continue
+			# check games
+			if 'Region-Encoded' in match['fields'] and 'Region-Encoded' in row['fields'] and 'Desired Games' in match['fields'] and 'Desired Games' in row['fields']:
+				for g in match['fields']['Desired Games']:
+					if g in row['fields']['Desired Games']:
+						for r in match['fields']['Region-Encoded']:
+							if r in row['fields']['Region-Encoded']:
+								print("Found by event: %s" % row['fields']['Tag'])
+								related_by_event.append(row)
+			
+	print(related_by_app)
+	print(related_by_event)
+
+search_related_vols(config['DEFAULT']["volBase"],config['DEFAULT']["volTable"],config['DEFAULT']["volView"])
+#get_projects(config['DEFAULT']["projBase"],config['DEFAULT']["projTable"],config['DEFAULT']["projView"])
+#get_staff(config['DEFAULT']["staffBase"],config['DEFAULT']["staffTable"],config['DEFAULT']["staffView"])
+#get_events(config['DEFAULT']["eventBase"],config['DEFAULT']["eventTable"],config['DEFAULT']["eventView"])
