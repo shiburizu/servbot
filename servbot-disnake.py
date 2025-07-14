@@ -81,7 +81,7 @@ async def on_ready():
 	refresh_slash_data.start()
 	
 @commands.has_permissions(manage_messages=True)
-@bot.slash_command()
+@bot.slash_command(description="Refreshes the to-do list in #956p-todo")
 async def refreshtodo(ctx):
 	await ctx.response.send_message("To-do list refreshing!")
 	await update_projects()
@@ -526,7 +526,7 @@ async def update_projects():
 
 		
 @commands.has_permissions(manage_messages=True)
-@bot.slash_command()
+@bot.slash_command(description="Sends you a DM with your currently assigned tasks in Airtable.")
 async def todo(ctx):
 	await ctx.response.defer()
 	table = at.table(config['DEFAULT']['taskBase'],config['DEFAULT']['taskTable'])
