@@ -147,7 +147,7 @@ async def project(ctx, project: str = commands.Param(description='Project name.'
 				event: str = commands.Param(default='',name='event',description='Parent event of project.',autocomplete=event_hint),
 				status: str = commands.Param(default='Todo',description='Current project status. Defaults to "todo".',choices=['Todo','In Progress','Done','Waiting','Clarification Needed','Dropped']),
 				priority: str = commands.Param(default='',description='Project priority.',choices=['Low','Medium','High','Urgent','Tabled']),
-				due: str = commands.Param(default='',name='due',description='Due date in MM/DD/YYYY format.')):
+				due: str = commands.Param(default=None,name='due',description='Due date in MM/DD/YYYY format.')):
 	
 	event_id = []
 	if event in events_list:
@@ -165,7 +165,7 @@ async def task(ctx, task: str = commands.Param(description='Task name.'),
 			   whomst: str = commands.Param(default='',name='assignees',description='956P Staff assigned to task. Comma-separated list accepted.',autocomplete=staff_hint), 
 			   status: str = commands.Param(default='Todo',description='Current task status. Defaults to "todo".',choices=['Todo','In Progress','Ongoing','Done','Waiting','Clarification Needed','Dropped']),
 			   priority: str = commands.Param(default='',description='Task priority.',choices=['Low','Medium','High','Urgent','Tabled']),
-			   due: str = commands.Param(default='',name='due',description='Due date in MM/DD/YYYY format.')):
+			   due: str = commands.Param(default=None,name='due',description='Due date in MM/DD/YYYY format.')):
 	whomst_ids = []
 	ignored = []
 	if "," in whomst:
