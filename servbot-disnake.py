@@ -90,32 +90,70 @@ async def refreshtodo(ctx):
 
 async def project_hint(ctx,string: str):
 	string = string.lower()
-	return [p for p in projects_list if string in p.lower()]
+	res = [p for p in projects_list if string in p.lower()]
+	if len(res) > 25:
+		res = res[0:24]
+	return res
 
 async def staff_hint(ctx,string: str):
 	string = string.lower()
-	return [p for p in staff_list if string in p.lower()]
+	res = [p for p in staff_list if string in p.lower()]
+	if len(res) > 25:
+		res = res[0:24]
+	return res
 
 async def event_hint(ctx,string: str):
 	string = string.lower()
-	return [p for p in events_list if string in p.lower()]
+	res =  [p for p in events_list if string in p.lower()]
+	if len(res) > 25:
+		res = res[0:24]
+	return res
 
 async def task_hint(ctx,string: str):
 	string = string.lower()
-	return [p for p in tasks_list if string in p.lower()]
+	res = [p for p in tasks_list if string in p.lower()]
+	if len(res) > 25:
+		res = res[0:24]
+	return res
 
 @commands.has_permissions(manage_messages=True)
-@bot.slash_command(description="Post an update to an existing Task in Airtable.")
-async def updatetask(ctx, task: str = commands.Param(description='Task to update. Should already exist in Airtable.',autocomplete=task_hint),
-					comment: str = commands.Param(description='Update to post to task.'),
-					attachment: disnake.Attachment = commands.Param(default=''),
-					status: str = commands.Param(default=None,description='Update current Task status.',choices=['In Progress','Done','Waiting','Clarification Needed','Dropped']),
-					priority: str = commands.Param(default=None,description='Update current Task priority.',choices=['Low','Medium','High','Urgent','Tabled']),
-					due: str = commands.Param(default=None,name='due',description='Update current Task date in MM/DD/YYYY format.')):
-	
-	task_id = []
+@bot.slash_command(description="Create a new task item or adds a comment to an existing one.")
+async def task(ctx, task: str = commands.Param(description='Task name.',autocomplete=task_hint), 
+			   comment: str = commands.Param(description='Text to describe the new task or update via comment'),
+			   project: str = commands.Param(default='',name='project',description='Parent project of task. Should already exist in Airtable. Overwrites project for existing task.',autocomplete=project_hint),
+			   whomst: str = commands.Param(default='',name='who',description='956P Staff assigned to task. Comma-separated list accepted. Overwrites assignees for existing task.',autocomplete=staff_hint), 
+			   status: str = commands.Param(default=None,description='Current task status. Overwrites status for existing task.',choices=['Todo','In Progress','Ongoing','Done','Waiting','Clarification Needed','Dropped']),
+			   priority: str = commands.Param(default=None,description='Task priority. Overwrites priority for existing task.',choices=['Low','Medium','High','Urgent','Tabled']),
+			   due: str = commands.Param(default=None,name='due',description='Due date in MM/DD/YYYY format. Overwrites due date for existing task.'),
+			   attachment: disnake.Attachment = commands.Param(default='')):
+	whomst_ids = []
+	ignored = []
+	if "," in whomst:
+		whomst = whomst.split(",")
+		for w in whomst:
+			if w in staff_list:
+				whomst_ids.append(staff_list[w])
+			else:
+				ignored.append(w)
+	else:
+		if whomst != '':
+			if whomst in staff_list:
+				whomst_ids = [staff_list[whomst]]
+			else:
+				ignored.append(whomst)
+	extra = ""
+	if ignored != []:
+		extra += "\nIgnored unknown assignees: %s" % ",".join(ignored)
+	project_id = []
+	if project in projects_list:
+		project_id = [projects_list[project]]
+	attachment_dict = []
+	if attachment != '':
+		attachment_dict = [{
+			"url" : attachment.url,
+			"filename" : attachment.url.split('/')[-1].split('?')[0]
+		}]
 	if task in tasks_list:
-
 		if any([status,priority,due]):
 			taskTbl = at.table(config['DEFAULT']['taskBase'],config['DEFAULT']['taskTable'])
 			data = {}
@@ -125,37 +163,43 @@ async def updatetask(ctx, task: str = commands.Param(description='Task to update
 				data['Task Priority'] = priority
 			if due:
 				data['Due Date'] = due	
+			if project_id != []:
+				data['Project'] = project_id
 			taskTbl.update(tasks_list[task],data)
-
 		task_id = [tasks_list[task]]
-	
-	author_id = []
-	if str(ctx.author.id) in staff_discords:
-		author_id = [staff_discords[str(ctx.author.id)]]
+		author_id = []
+		if str(ctx.author.id) in staff_discords:
+			author_id = [staff_discords[str(ctx.author.id)]]
+		commentTbl = at.table(config['DEFAULT']['commentBase'],config['DEFAULT']['commentTable'])
+		new_comment = commentTbl.create({'Comment':comment,'Task':task_id,'Author':author_id,'Attachments':attachment_dict})
+		await ctx.response.send_message("Added comment to [%s](%s)\n`%s`" % (new_comment['fields']['Comment-Topic'],new_comment['fields']['Task-URL'][0],comment),suppress_embeds=True)
+	else:
+		taskTbl = at.table(config['DEFAULT']['taskBase'],config['DEFAULT']['taskTable'])
+		new_task = taskTbl.create({'Task': task, 'Project': project_id, 'Description': comment, 'Assignees': whomst_ids, 'Due Date': due, 'Status': status, 'Task Priority': priority, 'Attachments': attachment_dict})
+		await ctx.response.send_message("Created Task: [%s](%s)%s" % (new_task['fields']['Task'],new_task['fields']['Interface URL'],extra),suppress_embeds=True)
+		await refresh_slash_data()
 
+@commands.has_permissions(manage_messages=True)
+@bot.slash_command(description="Creates a new project or adds a comment to an existing one.")
+async def project(ctx, project: str = commands.Param(description='Project name. Posts a comment if already exists.',autocomplete=project_hint),
+					comment: str = commands.Param(description='Text to describe the new project or update via comment'),
+					event: str = commands.Param(default='',name='event',description='Parent event of project. Overwrites event for existing project.',autocomplete=event_hint),
+					status: str = commands.Param(default=None,description='Current Project status.',choices=['Todo','In Progress','Done','Waiting','Clarification Needed','Dropped']),
+					priority: str = commands.Param(default=None,description='Current Project priority.',choices=['Low','Medium','High','Urgent','Tabled']),
+					due: str = commands.Param(default=None,name='due',description='Current Project due date in MM/DD/YYYY format.'),
+					attachment: disnake.Attachment = commands.Param(default='')):
+	event_id = []
+	if event in events_list:
+		event_id = [events_list[event]]
 	attachment_dict = []
 	if attachment != '':
 		attachment_dict = [{
 			"url" : attachment.url,
 			"filename" : attachment.url.split('/')[-1].split('?')[0]
 		}]
-
-	commentTbl = at.table(config['DEFAULT']['commentBase'],config['DEFAULT']['commentTable'])
-	new_comment = commentTbl.create({'Comment':comment,'Task':task_id,'Author':author_id,'Attachments':attachment_dict})
-	await ctx.response.send_message("Added comment to [%s](%s)" % (new_comment['fields']['Comment-Topic'],new_comment['fields']['Task-URL'][0]),suppress_embeds=True)
-
-@commands.has_permissions(manage_messages=True)
-@bot.slash_command(description="Post an update to an existing Project in Airtable.")
-async def updateproj(ctx, project: str = commands.Param(description='Project to update. Should already exist in Airtable.',autocomplete=project_hint),
-					comment: str = commands.Param(description='Update to post to project.'),
-					attachment: disnake.Attachment = commands.Param(default=''),
-					status: str = commands.Param(default=None,description='Update current Project status.',choices=['In Progress','Done','Waiting','Clarification Needed','Dropped']),
-					priority: str = commands.Param(default=None,description='Update current Project priority.',choices=['Low','Medium','High','Urgent','Tabled']),
-					due: str = commands.Param(default=None,name='due',description='Update current Project date in MM/DD/YYYY format.')):
-	
 	project_id = []
 	if project in projects_list:
-
+		# project exists, create comment
 		if any([status,priority,due]):
 			projTbl = at.table(config['DEFAULT']['projBase'],config['DEFAULT']['projTable'])
 			data = {}
@@ -165,24 +209,22 @@ async def updateproj(ctx, project: str = commands.Param(description='Project to 
 				data['Project Priority'] = priority
 			if due:
 				data['Due Date'] = due	
+			if event_id != []:
+				data['Event'] = event_id
 			projTbl.update(projects_list[project],data)
-		
 		project_id = [projects_list[project]]
-	
-	author_id = []
-	if str(ctx.author.id) in staff_discords:
-		author_id = [staff_discords[str(ctx.author.id)]]
-
-	attachment_dict = []
-	if attachment != '':
-		attachment_dict = [{
-			"url" : attachment.url,
-			"filename" : attachment.url.split('/')[-1].split('?')[0]
-		}]
-
-	commentTbl = at.table(config['DEFAULT']['commentBase'],config['DEFAULT']['commentTable'])
-	new_comment = commentTbl.create({'Comment':comment,'Project':project_id,'Author':author_id,'Attachments':attachment_dict})
-	await ctx.response.send_message("Added comment to [%s](%s)\n`%s`" % (new_comment['fields']['Comment-Topic'],new_comment['fields']['Project-URL'][0]),suppress_embeds=True)
+		author_id = []
+		if str(ctx.author.id) in staff_discords:
+			author_id = [staff_discords[str(ctx.author.id)]]
+		commentTbl = at.table(config['DEFAULT']['commentBase'],config['DEFAULT']['commentTable'])
+		new_comment = commentTbl.create({'Comment':comment,'Project':project_id,'Author':author_id,'Attachments':attachment_dict})
+		await ctx.response.send_message("Added comment to [%s](%s)\n`%s`" % (new_comment['fields']['Comment-Topic'],new_comment['fields']['Project-URL'][0],comment),suppress_embeds=True)
+	else:
+		# create new project
+		projTbl = at.table(config['DEFAULT']['projBase'],config['DEFAULT']['projTable'])
+		new_proj = projTbl.create({'Project': project,'Description': comment,'Event': event_id,'Status': status,'Project Priority': priority,'Due Date': due,'Attachments': attachment_dict})
+		await ctx.response.send_message("Created Project: [%s](%s)" % (new_proj['fields']['Project'],new_proj['fields']['Interface URL']),suppress_embeds=True)
+		await refresh_slash_data()
 
 @commands.has_permissions(manage_messages=True)
 @bot.slash_command(description="Create a new timeline item in Airtable.")
@@ -221,77 +263,6 @@ async def timeline(ctx, name: str = commands.Param(description='Timeline event n
 	taskTbl = at.table(config['DEFAULT']['timeBase'],config['DEFAULT']['timeTable'])
 	new_task = taskTbl.create({'Project': name,'Type': type,'Comments': comments,'Assignees': whomst_ids,'Date': start,'End Date': end,'Linked Event': event_id})
 	await ctx.response.send_message("Created Timeline item: [%s](%s)%s" % (new_task['fields']['Project'],new_task['fields']['Interface URL'],extra),suppress_embeds=True)
-
-@commands.has_permissions(manage_messages=True)
-@bot.slash_command(description="Create a new project item in Airtable.")
-async def project(ctx, project: str = commands.Param(description='Project name.'),
-				desc: str = commands.Param(default='',name='description',description='Project description.'), 
-				event: str = commands.Param(default='',name='event',description='Parent event of project.',autocomplete=event_hint),
-				status: str = commands.Param(default='Todo',description='Current project status. Defaults to "todo".',choices=['Todo','In Progress','Done','Waiting','Clarification Needed','Dropped']),
-				priority: str = commands.Param(default='',description='Project priority.',choices=['Low','Medium','High','Urgent','Tabled']),
-				due: str = commands.Param(default=None,name='due',description='Due date in MM/DD/YYYY format.'),
-				attachment: disnake.Attachment = commands.Param(default='')):
-	
-	event_id = []
-	if event in events_list:
-		event_id = [events_list[event]]
-
-	attachment_dict = []
-	if attachment != '':
-		attachment_dict = [{
-			"url" : attachment.url,
-			"filename" : attachment.url.split('/')[-1].split('?')[0]
-		}]
-
-	projTbl = at.table(config['DEFAULT']['projBase'],config['DEFAULT']['projTable'])
-	new_proj = projTbl.create({'Project': project,'Description': desc,'Event': event_id,'Status': status,'Project Priority': priority,'Due Date': due,'Attachments': attachment_dict})
-	await ctx.response.send_message("Created Project: [%s](%s)" % (new_proj['fields']['Project'],new_proj['fields']['Interface URL']),suppress_embeds=True)
-	await refresh_slash_data()
-
-@commands.has_permissions(manage_messages=True)
-@bot.slash_command(description="Create a new task item in Airtable.")
-async def task(ctx, task: str = commands.Param(description='Task name.'), 
-			   project: str = commands.Param(default='',name='project',description='Parent project of task. Should already exist in Airtable.',autocomplete=project_hint),
-			   whomst: str = commands.Param(default='',name='assignees',description='956P Staff assigned to task. Comma-separated list accepted.',autocomplete=staff_hint), 
-			   status: str = commands.Param(default='Todo',description='Current task status. Defaults to "todo".',choices=['Todo','In Progress','Ongoing','Done','Waiting','Clarification Needed','Dropped']),
-			   priority: str = commands.Param(default='',description='Task priority.',choices=['Low','Medium','High','Urgent','Tabled']),
-			   due: str = commands.Param(default=None,name='due',description='Due date in MM/DD/YYYY format.'),
-			   attachment: disnake.Attachment = commands.Param(default='')):
-	whomst_ids = []
-	ignored = []
-	if "," in whomst:
-		whomst = whomst.split(",")
-		for w in whomst:
-			if w in staff_list:
-				whomst_ids.append(staff_list[w])
-			else:
-				ignored.append(w)
-	else:
-		if whomst != '':
-			if whomst in staff_list:
-				whomst_ids = [staff_list[whomst]]
-			else:
-				ignored.append(whomst)
-
-	project_id = []
-	if project in projects_list:
-		project_id = [projects_list[project]]
-	
-	extra = ""
-	if ignored != []:
-		extra += "\nIgnored unknown assignees: %s" % ",".join(ignored)
-
-	attachment_dict = []
-	if attachment != '':
-		attachment_dict = [{
-			"url" : attachment.url,
-			"filename" : attachment.url.split('/')[-1].split('?')[0]
-		}]
-
-	taskTbl = at.table(config['DEFAULT']['taskBase'],config['DEFAULT']['taskTable'])
-	new_task = taskTbl.create({'Task': task,'Project': project_id,'Assignees': whomst_ids,'Due Date': due,'Status': status, 'Task Priority': priority, 'Attachments': attachment_dict})
-	await ctx.response.send_message("Created Task: [%s](%s)%s" % (new_task['fields']['Task'],new_task['fields']['Interface URL'],extra),suppress_embeds=True)
-	await refresh_slash_data()
 
 @commands.has_permissions(manage_messages=True)
 @bot.slash_command(description="Provide a volunteer tag and event, and retrieve a list of related applicants by multiple criteria.")
