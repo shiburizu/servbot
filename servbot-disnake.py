@@ -54,7 +54,9 @@ message_cache = []
 projects_list = ['Unloaded']
 staff_list = ['Unloaded']
 events_list = ['Unloaded']
+tasks_list = ['Unloaded']
 staff_ids = {}
+staff_discords = {}
 
 if os.path.isfile('tweets_cache.json'):
 	with open('tweets_cache.json') as file:
@@ -98,9 +100,89 @@ async def event_hint(ctx,string: str):
 	string = string.lower()
 	return [p for p in events_list if string in p.lower()]
 
-async def event_vol_hint(ctx,string: str):
+async def task_hint(ctx,string: str):
 	string = string.lower()
-	return [p for p in events_list if string in p.lower()]
+	return [p for p in tasks_list if string in p.lower()]
+
+@commands.has_permissions(manage_messages=True)
+@bot.slash_command(description="Post an update to an existing Task in Airtable.")
+async def updatetask(ctx, task: str = commands.Param(description='Task to update. Should already exist in Airtable.',autocomplete=task_hint),
+					comment: str = commands.Param(description='Update to post to task.'),
+					attachment: disnake.Attachment = commands.Param(default=''),
+					status: str = commands.Param(default=None,description='Update current Task status.',choices=['In Progress','Done','Waiting','Clarification Needed','Dropped']),
+					priority: str = commands.Param(default=None,description='Update current Task priority.',choices=['Low','Medium','High','Urgent','Tabled']),
+					due: str = commands.Param(default=None,name='due',description='Update current Task date in MM/DD/YYYY format.')):
+	
+	task_id = []
+	if task in tasks_list:
+
+		if any([status,priority,due]):
+			taskTbl = at.table(config['DEFAULT']['taskBase'],config['DEFAULT']['taskTable'])
+			data = {}
+			if status:
+				data['Status'] = status
+			if priority:
+				data['Task Priority'] = priority
+			if due:
+				data['Due Date'] = due	
+			taskTbl.update(tasks_list[task],data)
+
+		task_id = [tasks_list[task]]
+	
+	author_id = []
+	if str(ctx.author.id) in staff_discords:
+		author_id = [staff_discords[str(ctx.author.id)]]
+
+	attachment_dict = []
+	if attachment != '':
+		attachment_dict = [{
+			"url" : attachment.url,
+			"filename" : attachment.url.split('/')[-1].split('?')[0]
+		}]
+
+	commentTbl = at.table(config['DEFAULT']['commentBase'],config['DEFAULT']['commentTable'])
+	new_comment = commentTbl.create({'Comment':comment,'Task':task_id,'Author':author_id,'Attachments':attachment_dict})
+	await ctx.response.send_message("Added comment to [%s](%s)" % (new_comment['fields']['Comment-Topic'],new_comment['fields']['Task-URL'][0]),suppress_embeds=True)
+
+@commands.has_permissions(manage_messages=True)
+@bot.slash_command(description="Post an update to an existing Project in Airtable.")
+async def updateproj(ctx, project: str = commands.Param(description='Project to update. Should already exist in Airtable.',autocomplete=task_hint),
+					comment: str = commands.Param(description='Update to post to project.'),
+					attachment: disnake.Attachment = commands.Param(default=''),
+					status: str = commands.Param(default=None,description='Update current Project status.',choices=['In Progress','Done','Waiting','Clarification Needed','Dropped']),
+					priority: str = commands.Param(default=None,description='Update current Project priority.',choices=['Low','Medium','High','Urgent','Tabled']),
+					due: str = commands.Param(default=None,name='due',description='Update current Project date in MM/DD/YYYY format.')):
+	
+	project_id = []
+	if project in projects_list:
+
+		if any([status,priority,due]):
+			projTbl = at.table(config['DEFAULT']['projBase'],config['DEFAULT']['projTable'])
+			data = {}
+			if status:
+				data['Status'] = status
+			if priority:
+				data['Project Priority'] = priority
+			if due:
+				data['Due Date'] = due	
+			projTbl.update(projects_list[project],data)
+		
+		project_id = [projects_list[project]]
+	
+	author_id = []
+	if str(ctx.author.id) in staff_discords:
+		author_id = [staff_discords[str(ctx.author.id)]]
+
+	attachment_dict = []
+	if attachment != '':
+		attachment_dict = [{
+			"url" : attachment.url,
+			"filename" : attachment.url.split('/')[-1].split('?')[0]
+		}]
+
+	commentTbl = at.table(config['DEFAULT']['commentBase'],config['DEFAULT']['commentTable'])
+	new_comment = commentTbl.create({'Comment':comment,'Project':project_id,'Author':author_id,'Attachments':attachment_dict})
+	await ctx.response.send_message("Added comment to [%s](%s)\n`%s`" % (new_comment['fields']['Comment-Topic'],new_comment['fields']['Project-URL'][0]),suppress_embeds=True)
 
 @commands.has_permissions(manage_messages=True)
 @bot.slash_command(description="Create a new timeline item in Airtable.")
@@ -147,14 +229,22 @@ async def project(ctx, project: str = commands.Param(description='Project name.'
 				event: str = commands.Param(default='',name='event',description='Parent event of project.',autocomplete=event_hint),
 				status: str = commands.Param(default='Todo',description='Current project status. Defaults to "todo".',choices=['Todo','In Progress','Done','Waiting','Clarification Needed','Dropped']),
 				priority: str = commands.Param(default='',description='Project priority.',choices=['Low','Medium','High','Urgent','Tabled']),
-				due: str = commands.Param(default=None,name='due',description='Due date in MM/DD/YYYY format.')):
+				due: str = commands.Param(default=None,name='due',description='Due date in MM/DD/YYYY format.'),
+				attachment: disnake.Attachment = commands.Param(default='')):
 	
 	event_id = []
 	if event in events_list:
 		event_id = [events_list[event]]
 
+	attachment_dict = []
+	if attachment != '':
+		attachment_dict = [{
+			"url" : attachment.url,
+			"filename" : attachment.url.split('/')[-1].split('?')[0]
+		}]
+
 	projTbl = at.table(config['DEFAULT']['projBase'],config['DEFAULT']['projTable'])
-	new_proj = projTbl.create({'Project': project,'Description':desc,'Event':event_id,'Status':status,'Project Priority':priority,'Due Date':due})
+	new_proj = projTbl.create({'Project': project,'Description': desc,'Event': event_id,'Status': status,'Project Priority': priority,'Due Date': due,'Attachments': attachment_dict})
 	await ctx.response.send_message("Created Project: [%s](%s)" % (new_proj['fields']['Project'],new_proj['fields']['Interface URL']),suppress_embeds=True)
 	await refresh_slash_data()
 
@@ -165,7 +255,8 @@ async def task(ctx, task: str = commands.Param(description='Task name.'),
 			   whomst: str = commands.Param(default='',name='assignees',description='956P Staff assigned to task. Comma-separated list accepted.',autocomplete=staff_hint), 
 			   status: str = commands.Param(default='Todo',description='Current task status. Defaults to "todo".',choices=['Todo','In Progress','Ongoing','Done','Waiting','Clarification Needed','Dropped']),
 			   priority: str = commands.Param(default='',description='Task priority.',choices=['Low','Medium','High','Urgent','Tabled']),
-			   due: str = commands.Param(default=None,name='due',description='Due date in MM/DD/YYYY format.')):
+			   due: str = commands.Param(default=None,name='due',description='Due date in MM/DD/YYYY format.'),
+			   attachment: disnake.Attachment = commands.Param(default='')):
 	whomst_ids = []
 	ignored = []
 	if "," in whomst:
@@ -190,15 +281,23 @@ async def task(ctx, task: str = commands.Param(description='Task name.'),
 	if ignored != []:
 		extra += "\nIgnored unknown assignees: %s" % ",".join(ignored)
 
+	attachment_dict = []
+	if attachment != '':
+		attachment_dict = [{
+			"url" : attachment.url,
+			"filename" : attachment.url.split('/')[-1].split('?')[0]
+		}]
+
 	taskTbl = at.table(config['DEFAULT']['taskBase'],config['DEFAULT']['taskTable'])
-	new_task = taskTbl.create({'Task': task,'Project': project_id,'Assignees': whomst_ids,'Due Date': due})
+	new_task = taskTbl.create({'Task': task,'Project': project_id,'Assignees': whomst_ids,'Due Date': due,'Status': status, 'Task Priority': priority, 'Attachments': attachment_dict})
 	await ctx.response.send_message("Created Task: [%s](%s)%s" % (new_task['fields']['Task'],new_task['fields']['Interface URL'],extra),suppress_embeds=True)
+	await refresh_slash_data()
 
 @commands.has_permissions(manage_messages=True)
 @bot.slash_command(description="Provide a volunteer tag and event, and retrieve a list of related applicants by multiple criteria.")
 async def volsearch(ctx, 
 					tag: str = commands.Param(description='Volunteer tag.'),
-					event_name: str = commands.Param(name='event',description='Event to search.',autocomplete=event_vol_hint)):
+					event_name: str = commands.Param(name='event',description='Event to search.',autocomplete=event_hint)):
 	await ctx.response.defer()
 	msg = ""
 	res_references = await volsearch_by_field(tag,event_name,'References')
@@ -318,26 +417,32 @@ async def get_all_linked_rows(base,id,view,key):
 
 @loop(minutes=5,reconnect=True)
 async def refresh_slash_data():
-	global projects_list,staff_list,events_list
+	global projects_list,staff_list,events_list, tasks_list
 	projects_list = await get_all_linked_rows(
 		config['DEFAULT']["projBase"],
 		config['DEFAULT']["projTable"],
 		config['DEFAULT']["projView"],
 		'Project')
+	tasks_list = await get_all_linked_rows(
+		config['DEFAULT']["taskBase"],
+		config['DEFAULT']["taskTable"],
+		config['DEFAULT']["taskView"],
+		'Task')
 	staff_list = await get_all_linked_rows(
 		config['DEFAULT']["staffBase"],
 		config['DEFAULT']["staffTable"],
 		config['DEFAULT']["staffView"],
 		'Tag')
-	# refresh IDs of staff for lookup
-	staffTbl = at.table(config['DEFAULT']["staffBase"],config['DEFAULT']["staffTable"])
-	for row in staffTbl.all(view=config['DEFAULT']["staffView"]):
-		staff_ids[row['id']] = row['fields']['Tag']
 	events_list = await get_all_linked_rows(
 		config['DEFAULT']["eventBase"],
 		config['DEFAULT']["eventTable"],
 		config['DEFAULT']["eventView"],
 		'Name-Short')
+	# refresh IDs of staff for lookup
+	staffTbl = at.table(config['DEFAULT']["staffBase"],config['DEFAULT']["staffTable"])
+	for row in staffTbl.all(view=config['DEFAULT']["staffView"]):
+		staff_ids[row['id']] = row['fields']['Tag']
+		staff_discords[row['fields']['Discord ID']] = row['id']
 
 @commands.has_permissions(manage_messages=True)
 @bot.slash_command(description="Run it up!")
