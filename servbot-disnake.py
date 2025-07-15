@@ -146,7 +146,7 @@ async def updatetask(ctx, task: str = commands.Param(description='Task to update
 
 @commands.has_permissions(manage_messages=True)
 @bot.slash_command(description="Post an update to an existing Project in Airtable.")
-async def updateproj(ctx, project: str = commands.Param(description='Project to update. Should already exist in Airtable.',autocomplete=task_hint),
+async def updateproj(ctx, project: str = commands.Param(description='Project to update. Should already exist in Airtable.',autocomplete=project_hint),
 					comment: str = commands.Param(description='Update to post to project.'),
 					attachment: disnake.Attachment = commands.Param(default=''),
 					status: str = commands.Param(default=None,description='Update current Project status.',choices=['In Progress','Done','Waiting','Clarification Needed','Dropped']),
