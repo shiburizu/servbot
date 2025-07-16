@@ -112,7 +112,7 @@ async def on_ready():
 		await login_bsky()
 		do_sync.start()
 	if "--no-todo" not in sys.argv:
-		update_project_loop.start()
+		await update_project_loop.start()
 		
 	refresh_slash_data.start()
 	
