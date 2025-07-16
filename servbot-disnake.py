@@ -73,7 +73,7 @@ async def task_priority_emoji(t):
 			"Medium" : "🟨",
 			"High" : "🟥",
 			"Urgent" : "🚨",
-			"N/A" : "❔"
+			"N/A" : "🔹"
 		}
 	if 'Task Priority' in t['fields']:
 		if t['fields']['Task Priority'] in ref:
@@ -90,7 +90,7 @@ async def proj_priority_emoji(t):
 		"Medium" : "🟡",
 		"High" : "🔴",
 		"Urgent" : "🚨",
-		"N/A" : "❔"
+		"N/A" : "🔹"
 	}
 	if 'Project Priority' in t['fields']:
 		if t['fields']['Project Priority'] in ref:
