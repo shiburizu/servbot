@@ -66,6 +66,40 @@ if os.path.isfile('message_cache.json'):
 	with open('message_cache.json') as file:
 		message_cache = json.load(file)
 
+async def task_priority_emoji(t):
+	ref = {
+			"Tabled" : "💤",
+			"Low" : "🟩",
+			"Medium" : "🟨",
+			"High" : "🟥",
+			"Urgent" : "🚨",
+			"N/A" : "❔"
+		}
+	if 'Task Priority' in t['fields']:
+		if t['fields']['Task Priority'] in ref:
+			return ref[t['fields']['Task Priority']]
+		else:
+			return ref["N/A"]
+	else:
+		return ref["N/A"]
+	
+async def proj_priority_emoji(t):
+	ref = {
+		"Tabled" : "💤",
+		"Low" : "🔵",
+		"Medium" : "🟡",
+		"High" : "🔴",
+		"Urgent" : "🚨",
+		"N/A" : "❔"
+	}
+	if 'Project Priority' in t['fields']:
+		if t['fields']['Project Priority'] in ref:
+			return ref[t['fields']['Project Priority']]
+		else:
+			return ref["N/A"]
+	else:
+		return ref["N/A"]
+
 @bot.event
 async def on_ready():
 	logging.info('Logged in as')
@@ -482,81 +516,75 @@ async def generate_link(url):
 	else:
 		return url
 
-async def generate_task_string(task,project_id):
-	if 'Task' not in task:
-		return None
-	if 'Project' not in task:
-		task['Project'] = []
-	if 'Event Name-Rollup' not in task or task['Event Name-Rollup'] == []:
-		task['Event Name-Rollup'] = "No Event Assigned"
-	elif task['Event Name-Rollup'] != []:
-		task['Event Name-Rollup'] = task['Event Name-Rollup'][0]
-	if project_id in task['Project'] or task['Project'] == []:
-		if 'Task Priority' not in task:
-			task['Task Priority'] = "N/A"
-		task_string = ""
-		if task['Task Priority'] == 'Tabled':
-			task_string += "`💤` "
-		elif task['Task Priority'] == 'Low':
-			task_string += "`🟦` "
-		elif task['Task Priority'] == 'Medium':
-			task_string += "`🟨` "
-		elif task['Task Priority'] == 'High':
-			task_string += "`🟥` "
-		elif task['Task Priority'] == 'Urgent':
-			task_string += "`🚨` "
-		elif task['Task Priority'] == 'N/A':
-			task_string += "`🔹` "
-		if 'Status' in task:
-			task_string += "[**[%s]**](%s) " % (task['Status'],task['Shortlink'])
-		else:
-			task_string += "[**[??]**](%s) " % task['Status']
-		task_string += task['Task']
-		if 'Assignees-Discord' in task:
-			for d in task['Assignees-Discord']:
-				task_string+= " <@%s>" % d
-		if 'Due Date-Timestamp' in task:
-			task_string += " `⏰ due` <t:%s:R>" % task['Due Date-Timestamp']
-		if task['Dependencies-Count'] != 0:
-			task_string += " `📝 %s deps`" % task['Dependencies-Count']
-		if task['Timeline-Count'] != 0:
-			task_string += " `📆 %s`" % task['Timeline-Count']
-		if task['Attachments-Count'] != 0:
-			task_string += " `📁 %s`" % task['Attachments-Count']
-		if task['Comments-Count'] != 0:
-			task_string += " `💬 %s`" % task['Comments-Count']
-		task_string += "\n"
-		return task_string
-	return None
+async def generate_task_string(task):
+	mentions = []
+	if 'Assignees-Discord' in task['fields']:
+		for a in task['fields']['Assignees-Discord']:
+			mentions.append("<@%s>" % a)
+	mentions = " ".join(mentions).strip()
+	if 'Shortlink' not in task['fields']:
+		url = await generate_link(task['fields']['Interface URL'])
+		task['fields']['Shortlink'] = url
+		taskTbl = at.table(config['DEFAULT']['taskBase'],config['DEFAULT']['taskTable'])
+		taskTbl.update(task['id'],{'Shortlink':url})
+	task_string = "\n- `%s` **[[%s]](%s)** %s %s" % (
+		await task_priority_emoji(task),
+		task['fields']['Status'],
+		task['fields']['Shortlink'],
+		task['fields']['Task'],
+		mentions
+	)
+	return task_string.rstrip()
 
 async def generate_project_string(project):
-	if 'Project' not in project:
-		return None
-	project_string = "## "
-	if 'Project Priority' not in project:
-		project['Project Priority'] = 'N/A'
-	if project['Project Priority'] == 'Tabled':
-		project_string += "💤` "
-	elif project['Project Priority'] == 'Low':
-		project_string += "`🔵` "
-	elif project['Project Priority'] == 'Medium':
-		project_string += "`🟡` "
-	elif project['Project Priority'] == 'High':
-		project_string += "`🔴` "
-	elif project['Project Priority'] == 'Urgent':
-		project_string += "`🚨` "
-	elif project['Project Priority'] == 'N/A':
-		project_string += "`🔹` "
-	if 'Status' in project:
-		project_string += "[[%s]](%s) " % (project['Status'],project['Shortlink'])
-	else:
-		project_string += "[[??]](%s) " % (project['Shortlink'])
-	project_string += project['Project']
-	project_string += "\n"
+	if 'Shortlink' not in project['fields']:
+		url = await generate_link(project['fields']['Interface URL'])
+		project['fields']['Shortlink'] = url
+		projTbl = at.table(config['DEFAULT']['projBase'],config['DEFAULT']['projTable'])
+		projTbl.update(project['id'],{'Shortlink':url})
+	project_string = "\n### `%s` [[%s]](%s) %s" % (
+		await proj_priority_emoji(project),
+		project['fields']['Status'],
+		project['fields']['Shortlink'],
+		project['fields']['Project']
+	)
 	return project_string
 
-
 async def update_projects():
+	projTbl = at.table(config['DEFAULT']['projBase'],config['DEFAULT']['projTable'])
+	taskTbl = at.table(config['DEFAULT']['taskBase'],config['DEFAULT']['taskTable'])
+	strings = []
+	cur_event = None
+
+	for proj in projTbl.all(view=config['DEFAULT']['projView']):
+		if 'Event-Rollup' in proj['fields']:
+			if cur_event != proj['fields']['Event-Rollup']:
+				strings.append("\n# ```%s```\n" % proj['fields']['Event-Rollup'][0])
+				cur_event = proj['fields']['Event-Rollup']
+			strings.append(await generate_project_string(proj))
+			for task in taskTbl.all(view=config['DEFAULT']['taskView']):
+				if proj['id'] in task['fields']['Project']:
+					strings.append(await generate_task_string(task))
+	#orphaned proj
+	orphan_projects = False
+	for proj in projTbl.all(view=config['DEFAULT']['projOrphanView']):
+		if orphan_projects == False:
+			strings.append("\n# ```Projects - No Event```\n")
+			orphan_projects = True
+		strings.append(await generate_project_string(proj))
+		for task in taskTbl.all(view=config['DEFAULT']['taskView']):
+			if proj['id'] in task['fields']['Project']:
+				strings.append(await generate_task_string(task))
+	#orphaned tasks
+	orphan_tasks = False
+	for task in taskTbl.all(view=config['DEFAULT']['taskOrphanView']):
+		if orphan_tasks == False:
+			strings.append("\n# ```Tasks - No Project```\n")
+			orphan_tasks = True
+		strings.append(await generate_task_string(task))
+	await combine_messages(strings)
+
+async def old_update_projects():
 	projTbl = at.table(config['DEFAULT']['projBase'],config['DEFAULT']['projTable'])
 	taskTbl = at.table(config['DEFAULT']['taskBase'],config['DEFAULT']['taskTable'])
 	events = {}
