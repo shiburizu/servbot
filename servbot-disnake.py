@@ -430,12 +430,12 @@ async def refresh_slash_data():
 	projects_list = await get_all_linked_rows(
 		config['DEFAULT']["projBase"],
 		config['DEFAULT']["projTable"],
-		config['DEFAULT']["projView"],
+		config['DEFAULT']["allProjView"],
 		'Project')
 	tasks_list = await get_all_linked_rows(
 		config['DEFAULT']["taskBase"],
 		config['DEFAULT']["taskTable"],
-		config['DEFAULT']["taskView"],
+		config['DEFAULT']["allTaskView"],
 		'Task')
 	staff_list = await get_all_linked_rows(
 		config['DEFAULT']["staffBase"],
