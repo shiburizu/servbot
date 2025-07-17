@@ -154,27 +154,28 @@ async def task_hint(ctx,string: str):
 @bot.slash_command(description="Create a new task item or adds a comment to an existing one.")
 async def task(ctx, task: str = commands.Param(description='Task name.',autocomplete=task_hint), 
 			   comment: str = commands.Param(description='Text to describe the new task or update via comment'),
-			   project: str = commands.Param(default='',name='project',description='Parent project of task. Should already exist in Airtable. Overwrites project for existing task.',autocomplete=project_hint),
-			   whomst: str = commands.Param(default='',name='who',description='956P Staff assigned to task. Comma-separated list accepted. Overwrites assignees for existing task.',autocomplete=staff_hint), 
+			   project: str = commands.Param(default=None,name='project',description='Parent project of task. Should already exist in Airtable. Overwrites project for existing task.',autocomplete=project_hint),
+			   whomst: str = commands.Param(default=None,name='who',description='956P Staff assigned to task. Comma-separated list accepted. Overwrites assignees for existing task.',autocomplete=staff_hint), 
 			   status: str = commands.Param(default=None,description='Current task status. Overwrites status for existing task.',choices=['Todo','In Progress','Ongoing','Done','Waiting','Clarification Needed','Dropped']),
 			   priority: str = commands.Param(default=None,description='Task priority. Overwrites priority for existing task.',choices=['Low','Medium','High','Urgent','Tabled']),
-			   due: str = commands.Param(default=None,name='due',description='Due date in MM/DD/YYYY format. Overwrites due date for existing task.'),
+			   due: str = commands.Param(default=None,description='Due date in MM/DD/YYYY format. Overwrites due date for existing task.'),
 			   attachment: disnake.Attachment = commands.Param(default='')):
 	whomst_ids = []
 	ignored = []
-	if "," in whomst:
-		whomst = whomst.split(",")
-		for w in whomst:
-			if w in staff_list:
-				whomst_ids.append(staff_list[w])
-			else:
-				ignored.append(w)
-	else:
-		if whomst != '':
-			if whomst in staff_list:
-				whomst_ids = [staff_list[whomst]]
-			else:
-				ignored.append(whomst)
+	if whomst:
+		if "," in whomst:
+			whomst = whomst.split(",")
+			for w in whomst:
+				if w in staff_list:
+					whomst_ids.append(staff_list[w])
+				else:
+					ignored.append(w)
+		else:
+			if whomst != '':
+				if whomst in staff_list:
+					whomst_ids = [staff_list[whomst]]
+				else:
+					ignored.append(whomst)
 	extra = ""
 	if ignored != []:
 		extra += "\nIgnored unknown assignees: %s" % ",".join(ignored)
@@ -188,7 +189,7 @@ async def task(ctx, task: str = commands.Param(description='Task name.',autocomp
 			"filename" : attachment.url.split('/')[-1].split('?')[0]
 		}]
 	if task in tasks_list:
-		if any([status,priority,due]):
+		if any([status,priority,due,project]):
 			taskTbl = at.table(config['DEFAULT']['taskBase'],config['DEFAULT']['taskTable'])
 			data = {}
 			if status:
@@ -219,10 +220,10 @@ async def task(ctx, task: str = commands.Param(description='Task name.',autocomp
 @bot.slash_command(description="Creates a new project or adds a comment to an existing one.")
 async def project(ctx, project: str = commands.Param(description='Project name. Posts a comment if already exists.',autocomplete=project_hint),
 					comment: str = commands.Param(description='Text to describe the new project or update via comment'),
-					event: str = commands.Param(default='',name='event',description='Parent event of project. Overwrites event for existing project.',autocomplete=event_hint),
+					event: str = commands.Param(default=None,description='Parent event of project. Overwrites event for existing project.',autocomplete=event_hint),
 					status: str = commands.Param(default=None,description='Current Project status.',choices=['Todo','In Progress','Done','Waiting','Clarification Needed','Dropped']),
 					priority: str = commands.Param(default=None,description='Current Project priority.',choices=['Low','Medium','High','Urgent','Tabled']),
-					due: str = commands.Param(default=None,name='due',description='Current Project due date in MM/DD/YYYY format.'),
+					due: str = commands.Param(default=None,description='Current Project due date in MM/DD/YYYY format.'),
 					attachment: disnake.Attachment = commands.Param(default='')):
 	event_id = []
 	if event in events_list:
@@ -236,7 +237,7 @@ async def project(ctx, project: str = commands.Param(description='Project name. 
 	project_id = []
 	if project in projects_list:
 		# project exists, create comment
-		if any([status,priority,due]):
+		if any([status,priority,due,event]):
 			projTbl = at.table(config['DEFAULT']['projBase'],config['DEFAULT']['projTable'])
 			data = {}
 			if status:
@@ -465,7 +466,7 @@ async def runitup(ctx):
 
 @commands.is_owner()
 @bot.slash_command()
-async def shutdown(ctx):
+async def off(ctx):
 	await ctx.response.send_message("Bye bye!")
 	await ctx.bot.close()
 	exit()
