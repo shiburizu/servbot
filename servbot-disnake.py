@@ -208,6 +208,8 @@ async def task(ctx, task: str = commands.Param(description='Task name.',autocomp
 		new_comment = commentTbl.create({'Comment':comment,'Task':task_id,'Author':author_id,'Attachments':attachment_dict})
 		await ctx.response.send_message("Added comment to [%s](%s)\n`%s`" % (new_comment['fields']['Comment-Topic'],new_comment['fields']['Task-URL'][0],comment),suppress_embeds=True)
 	else:
+		if priority == None:
+			priority = 'Todo'
 		taskTbl = at.table(config['DEFAULT']['taskBase'],config['DEFAULT']['taskTable'])
 		new_task = taskTbl.create({'Task': task, 'Project': project_id, 'Description': comment, 'Assignees': whomst_ids, 'Due Date': due, 'Status': status, 'Task Priority': priority, 'Attachments': attachment_dict})
 		await ctx.response.send_message("Created Task: [%s](%s)%s" % (new_task['fields']['Task'],new_task['fields']['Interface URL'],extra),suppress_embeds=True)
@@ -254,6 +256,8 @@ async def project(ctx, project: str = commands.Param(description='Project name. 
 		new_comment = commentTbl.create({'Comment':comment,'Project':project_id,'Author':author_id,'Attachments':attachment_dict})
 		await ctx.response.send_message("Added comment to [%s](%s)\n`%s`" % (new_comment['fields']['Comment-Topic'],new_comment['fields']['Project-URL'][0],comment),suppress_embeds=True)
 	else:
+		if priority == None:
+			priority = 'Todo'
 		# create new project
 		projTbl = at.table(config['DEFAULT']['projBase'],config['DEFAULT']['projTable'])
 		new_proj = projTbl.create({'Project': project,'Description': comment,'Event': event_id,'Status': status,'Project Priority': priority,'Due Date': due,'Attachments': attachment_dict})
